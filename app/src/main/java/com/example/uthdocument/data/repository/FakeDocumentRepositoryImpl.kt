@@ -28,4 +28,8 @@ class FakeDocumentRepositoryImpl : DocumentRepository {
             emit(fakeDocs.filter { it.category == category })
         }
     }
+
+    override fun getDocumentById(id: String): Flow<Document?> = flow {
+        emit(fakeDocs.find { it.id == id })
+    }
 }

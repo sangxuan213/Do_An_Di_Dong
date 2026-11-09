@@ -15,4 +15,7 @@ interface DocumentRepository {
 
     // Lấy tất cả tài liệu, có thể lọc theo danh mục
     fun getDocumentsByCategory(category: Category? = null): Flow<List<Document>>
+
+    // Lấy một tài liệu theo id (null nếu không tồn tại)
+    fun getDocumentById(id: String): Flow<Document?>
 }

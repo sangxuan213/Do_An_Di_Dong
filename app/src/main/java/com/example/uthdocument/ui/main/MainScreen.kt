@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -46,8 +47,9 @@ sealed class BottomNavItem(val title: String, val icon: ImageVector) {
 }
 
 @Composable
-fun MainScreen() {
-    var selectedItem by remember { mutableIntStateOf(0) }
+fun MainScreen(onDocumentClick: (String) -> Unit = {}) {
+    // rememberSaveable: quay lại từ màn chi tiết vẫn ở đúng tab cũ
+    var selectedItem by rememberSaveable { mutableIntStateOf(0) }
     val items = listOf(
         BottomNavItem.Home,
         BottomNavItem.Library,
@@ -124,8 +126,8 @@ fun MainScreen() {
                 .padding(innerPadding)
         ) {
             when (items[selectedItem]) {
-                BottomNavItem.Home -> HomeScreen()
-                BottomNavItem.Library -> LibraryScreen()
+                BottomNavItem.Home -> HomeScreen(onDocumentClick = onDocumentClick)
+                BottomNavItem.Library -> LibraryScreen(onDocumentClick = onDocumentClick)
                 BottomNavItem.Schedule -> ScheduleScreen()
                 BottomNavItem.Profile -> ProfileScreen()
                 BottomNavItem.Empty -> {} // Không làm gì cả, đây là khoảng trống cho FAB

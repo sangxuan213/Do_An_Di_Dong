@@ -4,13 +4,19 @@ import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.NavType
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.example.uthdocument.ui.detail.DocumentDetailScreen
 import com.example.uthdocument.ui.login.LoginScreen
 import com.example.uthdocument.ui.main.MainScreen
 
 object Routes {
     const val LOGIN = "login"
     const val MAIN = "main"
+    const val DOCUMENT = "document/{id}"
+
+    fun document(id: String) = "document/$id"
 }
 
 @Composable
@@ -35,7 +41,20 @@ fun AppNavigation(navController: NavHostController = rememberNavController()) {
         
         // Màn hình Chính (chứa Bottom Navigation)
         composable(Routes.MAIN) {
-            MainScreen()
+            MainScreen(
+                onDocumentClick = { id -> navController.navigate(Routes.document(id)) }
+            )
+        }
+
+        // Màn hình chi tiết / xem tài liệu
+        composable(
+            route = Routes.DOCUMENT,
+            arguments = listOf(navArgument("id") { type = NavType.StringType })
+        ) { entry ->
+            DocumentDetailScreen(
+                documentId = entry.arguments?.getString("id").orEmpty(),
+                onBack = { navController.popBackStack() }
+            )
         }
     }
 }
