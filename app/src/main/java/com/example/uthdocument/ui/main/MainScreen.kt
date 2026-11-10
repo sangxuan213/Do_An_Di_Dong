@@ -47,7 +47,11 @@ sealed class BottomNavItem(val title: String, val icon: ImageVector) {
 }
 
 @Composable
-fun MainScreen(onDocumentClick: (String) -> Unit = {}) {
+fun MainScreen(
+    onDocumentClick: (String) -> Unit = {},
+    onAddDocumentClick: () -> Unit = {},
+    onLogout: () -> Unit = {}
+) {
     // rememberSaveable: quay lại từ màn chi tiết vẫn ở đúng tab cũ
     var selectedItem by rememberSaveable { mutableIntStateOf(0) }
     val items = listOf(
@@ -108,7 +112,7 @@ fun MainScreen(onDocumentClick: (String) -> Unit = {}) {
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { /* TODO: Mở màn hình Thêm tài liệu */ },
+                onClick = onAddDocumentClick,
                 shape = CircleShape,
                 containerColor = uthBlue,
                 contentColor = Color.White,
@@ -129,7 +133,7 @@ fun MainScreen(onDocumentClick: (String) -> Unit = {}) {
                 BottomNavItem.Home -> HomeScreen(onDocumentClick = onDocumentClick)
                 BottomNavItem.Library -> LibraryScreen(onDocumentClick = onDocumentClick)
                 BottomNavItem.Schedule -> ScheduleScreen()
-                BottomNavItem.Profile -> ProfileScreen()
+                BottomNavItem.Profile -> ProfileScreen(onLogout = onLogout)
                 BottomNavItem.Empty -> {} // Không làm gì cả, đây là khoảng trống cho FAB
             }
         }

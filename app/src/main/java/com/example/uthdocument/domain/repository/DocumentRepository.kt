@@ -18,4 +18,7 @@ interface DocumentRepository {
 
     // Lấy một tài liệu theo id (null nếu không tồn tại)
     fun getDocumentById(id: String): Flow<Document?>
+
+    // Thêm một tài liệu mới
+    suspend fun addDocument(document: Document)
 }

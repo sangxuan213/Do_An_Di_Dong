@@ -108,11 +108,17 @@ private fun DocumentContent(document: Document) {
         )
 
         when (document.type) {
-            DocumentType.PDF -> SamplePdfViewer(
-                modifier = Modifier
+            DocumentType.PDF -> {
+                val viewerModifier = Modifier
                     .weight(1f)
                     .fillMaxWidth()
-            )
+                if (document.filePath != null) {
+                    // Tài liệu người dùng tự thêm: mở đúng tệp đã chọn
+                    PdfViewer(file = File(document.filePath), modifier = viewerModifier)
+                } else {
+                    SamplePdfViewer(modifier = viewerModifier)
+                }
+            }
 
             else -> Box(
                 modifier = Modifier
