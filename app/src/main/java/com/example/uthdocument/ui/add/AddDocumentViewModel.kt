@@ -5,15 +5,20 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.uthdocument.data.repository.FakeCourseRepositoryImpl
 import com.example.uthdocument.data.repository.FakeDocumentRepositoryImpl
 import com.example.uthdocument.domain.model.Category
+import com.example.uthdocument.domain.model.Course
 import com.example.uthdocument.domain.model.Document
 import com.example.uthdocument.domain.model.DocumentType
+import com.example.uthdocument.domain.repository.CourseRepository
 import com.example.uthdocument.domain.repository.DocumentRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -27,6 +32,7 @@ data class AddDocumentUiState(
     val sizeBytes: Long = 0L,
     val title: String = "",
     val category: Category = Category.ECONOMICS,
+    val selectedCourseId: String? = null,
     val error: String? = null,
     val isSaving: Boolean = false,
     val saved: Boolean = false
@@ -36,6 +42,12 @@ class AddDocumentViewModel(application: Application) : AndroidViewModel(applicat
 
     // TODO (phối hợp Bạn B): đổi sang bản Firebase (upload lên Storage + ghi metadata vào Firestore)
     private val repository: DocumentRepository = FakeDocumentRepositoryImpl()
+
+    private val courseRepository: CourseRepository = FakeCourseRepositoryImpl()
+
+    /** Danh sách môn để chọn khi thêm tài liệu. */
+    val courses: StateFlow<List<Course>> = courseRepository.getCourses()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val _uiState = MutableStateFlow(AddDocumentUiState())
     val uiState: StateFlow<AddDocumentUiState> = _uiState.asStateFlow()
@@ -81,10 +93,16 @@ class AddDocumentViewModel(application: Application) : AndroidViewModel(applicat
         _uiState.update { it.copy(category = category) }
     }
 
+    /** id = null nghĩa là không gán môn nào. */
+    fun onCourseSelected(id: String?) {
+        _uiState.update { it.copy(selectedCourseId = id) }
+    }
+
     fun save() {
         val state = _uiState.value
         val uri = state.uri ?: return
         val type = state.type ?: return
+        val course = courses.value.find { it.id == state.selectedCourseId }
         if (state.title.isBlank() || state.isSaving) return
 
         viewModelScope.launch {
@@ -107,11 +125,13 @@ class AddDocumentViewModel(application: Application) : AndroidViewModel(applicat
                         id = id,
                         title = state.title.trim(),
                         type = type,
-                        category = state.category,
+                        // đã chọn môn thì danh mục lấy theo môn
+                        category = course?.category ?: state.category,
                         sizeInMb = file.length() / 1024.0 / 1024.0,
                         isDownloaded = true,
                         progress = 0f,
-                        filePath = file.absolutePath
+                        filePath = file.absolutePath,
+                        courseId = course?.id
                     )
                 )
             }.onSuccess {

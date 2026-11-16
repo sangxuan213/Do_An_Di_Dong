@@ -8,6 +8,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.uthdocument.ui.add.AddDocumentScreen
+import com.example.uthdocument.ui.courses.CourseDetailScreen
 import com.example.uthdocument.ui.detail.DocumentDetailScreen
 import com.example.uthdocument.ui.login.LoginScreen
 import com.example.uthdocument.ui.main.MainScreen
@@ -17,8 +18,10 @@ object Routes {
     const val MAIN = "main"
     const val DOCUMENT = "document/{id}"
     const val ADD_DOCUMENT = "add_document"
+    const val COURSE = "course/{id}"
 
     fun document(id: String) = "document/$id"
+    fun course(id: String) = "course/$id"
 }
 
 @Composable
@@ -46,6 +49,7 @@ fun AppNavigation(navController: NavHostController = rememberNavController()) {
             MainScreen(
                 onDocumentClick = { id -> navController.navigate(Routes.document(id)) },
                 onAddDocumentClick = { navController.navigate(Routes.ADD_DOCUMENT) },
+                onCourseClick = { id -> navController.navigate(Routes.course(id)) },
                 onLogout = {
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(Routes.MAIN) { inclusive = true }
@@ -57,6 +61,18 @@ fun AppNavigation(navController: NavHostController = rememberNavController()) {
         // Màn hình thêm tài liệu (nút FAB)
         composable(Routes.ADD_DOCUMENT) {
             AddDocumentScreen(onBack = { navController.popBackStack() })
+        }
+
+        // Màn hình chi tiết môn học (danh sách tài liệu của môn)
+        composable(
+            route = Routes.COURSE,
+            arguments = listOf(navArgument("id") { type = NavType.StringType })
+        ) { entry ->
+            CourseDetailScreen(
+                courseId = entry.arguments?.getString("id").orEmpty(),
+                onBack = { navController.popBackStack() },
+                onDocumentClick = { id -> navController.navigate(Routes.document(id)) }
+            )
         }
 
         // Màn hình chi tiết / xem tài liệu
