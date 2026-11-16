@@ -1,7 +1,12 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-    // id("com.google.gms.google-services")
+}
+
+// Chỉ bật Google Services khi đã có app/google-services.json (Bạn B gửi sau khi tạo Firebase project).
+// Chưa có file thì build vẫn chạy bình thường; có file là tự bật, không cần sửa gì thêm.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
 }
 
 android {
