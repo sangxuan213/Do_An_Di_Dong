@@ -7,10 +7,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -32,17 +32,17 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.uthdocument.ui.courses.CoursesScreen
 import com.example.uthdocument.ui.home.HomeScreen
 import com.example.uthdocument.ui.library.LibraryScreen
 import com.example.uthdocument.ui.profile.ProfileScreen
-import com.example.uthdocument.ui.schedule.ScheduleScreen
 
 // Định nghĩa các tab
 sealed class BottomNavItem(val title: String, val icon: ImageVector) {
     object Home : BottomNavItem("Trang chủ", Icons.Default.Home)
     object Library : BottomNavItem("Thư viện", Icons.Default.Folder)
     object Empty : BottomNavItem("", Icons.Default.Home) // Khoảng trống cho FAB
-    object Schedule : BottomNavItem("Lịch học", Icons.Default.CalendarMonth)
+    object Courses : BottomNavItem("Môn học", Icons.Default.School)
     object Profile : BottomNavItem("Cá nhân", Icons.Default.Person)
 }
 
@@ -50,6 +50,7 @@ sealed class BottomNavItem(val title: String, val icon: ImageVector) {
 fun MainScreen(
     onDocumentClick: (String) -> Unit = {},
     onAddDocumentClick: () -> Unit = {},
+    onCourseClick: (String) -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
     // rememberSaveable: quay lại từ màn chi tiết vẫn ở đúng tab cũ
@@ -58,7 +59,7 @@ fun MainScreen(
         BottomNavItem.Home,
         BottomNavItem.Library,
         BottomNavItem.Empty,
-        BottomNavItem.Schedule,
+        BottomNavItem.Courses,
         BottomNavItem.Profile
     )
 
@@ -132,7 +133,7 @@ fun MainScreen(
             when (items[selectedItem]) {
                 BottomNavItem.Home -> HomeScreen(onDocumentClick = onDocumentClick)
                 BottomNavItem.Library -> LibraryScreen(onDocumentClick = onDocumentClick)
-                BottomNavItem.Schedule -> ScheduleScreen()
+                BottomNavItem.Courses -> CoursesScreen(onCourseClick = onCourseClick)
                 BottomNavItem.Profile -> ProfileScreen(onLogout = onLogout)
                 BottomNavItem.Empty -> {} // Không làm gì cả, đây là khoảng trống cho FAB
             }

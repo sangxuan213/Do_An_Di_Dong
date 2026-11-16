@@ -2,7 +2,9 @@ package com.example.uthdocument.ui.add
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -17,10 +19,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -34,6 +39,10 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -41,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uthdocument.domain.model.Category
+import com.example.uthdocument.domain.model.Course
 import com.example.uthdocument.ui.theme.UthBlue
 
 private val SUPPORTED_MIME_TYPES = arrayOf(
@@ -56,6 +66,8 @@ fun AddDocumentScreen(
     viewModel: AddDocumentViewModel = viewModel()
 ) {
     val state = viewModel.uiState.collectAsState().value
+    val courses = viewModel.courses.collectAsState().value
+    val selectedCourse = courses.find { it.id == state.selectedCourseId }
 
     // Lưu xong thì quay về
     LaunchedEffect(state.saved) { if (state.saved) onBack() }
@@ -111,14 +123,28 @@ fun AddDocumentScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
+            CourseDropdown(
+                courses = courses,
+                selectedCourse = selectedCourse,
+                onSelected = viewModel::onCourseSelected
+            )
+
             Text(text = "Danh mục", fontWeight = FontWeight.SemiBold)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Category.entries.forEach { category ->
-                    FilterChip(
-                        selected = state.category == category,
-                        onClick = { viewModel.onCategorySelected(category) },
-                        label = { Text(category.displayName) }
-                    )
+            if (selectedCourse != null) {
+                // đã chọn môn thì danh mục lấy theo môn, không chọn tay nữa
+                Text(
+                    text = "${selectedCourse.category.displayName} (theo môn học đã chọn)",
+                    color = Color.Gray
+                )
+            } else {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Category.entries.forEach { category ->
+                        FilterChip(
+                            selected = state.category == category,
+                            onClick = { viewModel.onCategorySelected(category) },
+                            label = { Text(category.displayName) }
+                        )
+                    }
                 }
             }
 
@@ -143,6 +169,50 @@ fun AddDocumentScreen(
                 } else {
                     Text("Lưu tài liệu")
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CourseDropdown(
+    courses: List<Course>,
+    selectedCourse: Course?,
+    onSelected: (String?) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Box(modifier = Modifier.fillMaxWidth()) {
+        OutlinedTextField(
+            value = selectedCourse?.let { "${it.code} • ${it.name}" } ?: "Chưa chọn môn",
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Môn học") },
+            trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
+            modifier = Modifier.fillMaxWidth()
+        )
+        // Lớp phủ bắt thao tác chạm (ô nhập readOnly tự nuốt sự kiện click)
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clickable { expanded = true }
+        )
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text("Không gán môn") },
+                onClick = {
+                    onSelected(null)
+                    expanded = false
+                }
+            )
+            courses.forEach { course ->
+                DropdownMenuItem(
+                    text = { Text("${course.code} • ${course.name}") },
+                    onClick = {
+                        onSelected(course.id)
+                        expanded = false
+                    }
+                )
             }
         }
     }

@@ -13,7 +13,8 @@ data class Document(
     val sizeInMb: Double,
     val isDownloaded: Boolean = false,
     val progress: Float = 0f, // Dành cho "Tài liệu tiếp tục học", 0.0 -> 1.0
-    val filePath: String? = null // Đường dẫn tệp trên máy (tài liệu người dùng thêm); null = chưa có tệp
+    val filePath: String? = null, // Đường dẫn tệp trên máy (tài liệu người dùng thêm); null = chưa có tệp
+    val courseId: String? = null // Môn học mà tài liệu thuộc về; null = chưa gán môn
 )
 
 enum class DocumentType(val extension: String) {
