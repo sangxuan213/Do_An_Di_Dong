@@ -1,7 +1,9 @@
 package com.example.uthdocument.ui.detail
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -11,6 +13,7 @@ import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
@@ -20,7 +23,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -45,9 +50,13 @@ fun DocumentDetailScreen(
     documentId: String,
     onBack: () -> Unit,
     viewModel: DocumentDetailViewModel = viewModel(),
-    bookmarkViewModel: BookmarkViewModel = viewModel()
+    bookmarkViewModel: BookmarkViewModel = viewModel(),
+    interactionViewModel: DocumentInteractionViewModel = viewModel()
 ) {
-    LaunchedEffect(documentId) { viewModel.load(documentId) }
+    LaunchedEffect(documentId) {
+        viewModel.load(documentId)
+        interactionViewModel.load(documentId)
+    }
     val state = viewModel.uiState.collectAsState().value
     val isBookmarked = documentId in bookmarkViewModel.bookmarkedIds.collectAsState().value
 
@@ -91,14 +100,21 @@ fun DocumentDetailScreen(
                     color = Color.Gray,
                     modifier = Modifier.align(Alignment.Center)
                 )
-                is DetailUiState.Success -> DocumentContent(state.document)
+                is DetailUiState.Success -> DocumentContent(state.document, interactionViewModel)
             }
         }
     }
 }
 
 @Composable
-private fun DocumentContent(document: Document) {
+private fun DocumentContent(
+    document: Document,
+    interactionViewModel: DocumentInteractionViewModel
+) {
+    val stats = interactionViewModel.stats.collectAsState().value
+    val comments = interactionViewModel.comments.collectAsState().value
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+
     Column(modifier = Modifier.fillMaxSize()) {
         Text(
             text = "${document.type.extension} • ${"%.1f".format(document.sizeInMb)} MB • ${document.category.displayName}",
@@ -107,31 +123,55 @@ private fun DocumentContent(document: Document) {
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
         )
 
-        when (document.type) {
-            DocumentType.PDF -> {
-                val viewerModifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
-                if (document.filePath != null) {
-                    // Tài liệu người dùng tự thêm: mở đúng tệp đã chọn
-                    PdfViewer(file = File(document.filePath), modifier = viewerModifier)
-                } else {
-                    SamplePdfViewer(modifier = viewerModifier)
-                }
-            }
+        DocumentActionBar(stats = stats, onToggleLike = interactionViewModel::toggleLike)
 
-            else -> Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "Chưa hỗ trợ xem trực tiếp định dạng ${document.type.extension}.",
-                    color = Color.Gray,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(24.dp)
-                )
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            FilterChip(
+                selected = selectedTab == 0,
+                onClick = { selectedTab = 0 },
+                label = { Text("Nội dung") }
+            )
+            FilterChip(
+                selected = selectedTab == 1,
+                onClick = { selectedTab = 1 },
+                label = { Text("Nhận xét (${comments.size})") }
+            )
+        }
+
+        val contentModifier = Modifier
+            .weight(1f)
+            .fillMaxWidth()
+
+        if (selectedTab == 1) {
+            ReviewsTab(
+                stats = stats,
+                comments = comments,
+                onRate = interactionViewModel::rate,
+                onSend = interactionViewModel::addComment,
+                modifier = contentModifier
+            )
+        } else {
+            when (document.type) {
+                DocumentType.PDF -> {
+                    if (document.filePath != null) {
+                        // Tài liệu người dùng tự thêm: mở đúng tệp đã chọn
+                        PdfViewer(file = File(document.filePath), modifier = contentModifier)
+                    } else {
+                        SamplePdfViewer(modifier = contentModifier)
+                    }
+                }
+
+                else -> Box(modifier = contentModifier, contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "Chưa hỗ trợ xem trực tiếp định dạng ${document.type.extension}.",
+                        color = Color.Gray,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.padding(24.dp)
+                    )
+                }
             }
         }
     }
