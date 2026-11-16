@@ -12,7 +12,7 @@ import com.example.uthdocument.navigation.AppNavigation
 import com.example.uthdocument.ui.theme.UTHDocumentTheme
 
 class MainActivity : ComponentActivity() {
-    override fun onCreate(savedInstanceState: Bundle?) {
+    override fun gonCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
