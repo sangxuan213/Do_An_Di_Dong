@@ -1,4 +1,4 @@
-package com.uth.document.models
+package com.example.uthdocument.model
 
 data class User(
     val uid: String = "",
@@ -13,7 +13,10 @@ data class DocumentItem(
     val description: String = "",
     val fileUrl: String = "",
     val uploadedBy: String = "",
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val faculty: String = "",
+    val courseCode: String = "",
+    val qrCodeHash: String = ""
 )
 
 data class OfficialDispatch(
@@ -22,5 +25,10 @@ data class OfficialDispatch(
     val title: String = "",
     val content: String = "",
     val publishDate: String = "",
-    val sender: String = ""
+    val sender: String = "",
+    val type: String = "",
+    val status: String = "",
+    val isSigned: Boolean = false,
+    val signedFileUrl: String = "",
+    val annotations: List<String> = emptyList()
 )

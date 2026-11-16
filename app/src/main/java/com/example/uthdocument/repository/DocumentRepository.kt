@@ -14,7 +14,7 @@ class DocumentRepository(
 ) {
     suspend fun getDocumentsByFaculty(faculty: String): List<DocumentItem> {
         val query = if (faculty.isBlank()) {
-            db.collection("documents").orderBy("createdAt", Query.Direction.DESCENDING)
+            db.collection("documents").orderBy("timestamp", Query.Direction.DESCENDING)
         } else {
             db.collection("documents").whereEqualTo("faculty", faculty)
         }

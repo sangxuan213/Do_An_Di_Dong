@@ -1,4 +1,4 @@
-package com.uth.document.data
+package com.example.uthdocument.repository
 
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.tasks.await
