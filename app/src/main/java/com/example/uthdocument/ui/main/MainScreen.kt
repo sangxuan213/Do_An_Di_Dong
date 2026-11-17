@@ -53,6 +53,8 @@ fun MainScreen(
     onCourseClick: (String) -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
+    RequestNotificationPermission()
+
     // rememberSaveable: quay lại từ màn chi tiết vẫn ở đúng tab cũ
     var selectedItem by rememberSaveable { mutableIntStateOf(0) }
     val items = listOf(

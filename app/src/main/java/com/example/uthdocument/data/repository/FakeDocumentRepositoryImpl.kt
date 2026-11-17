@@ -24,6 +24,10 @@ class FakeDocumentRepositoryImpl : DocumentRepository {
     override fun getDocumentsByCourse(courseId: String): Flow<List<Document>> =
         store.map { docs -> docs.filter { it.courseId == courseId } }
 
+    override suspend fun incrementViewCount(id: String) {
+        store.update { docs -> docs.map { if (it.id == id) it.copy(viewCount = it.viewCount + 1) else it } }
+    }
+
     override suspend fun addDocument(document: Document) {
         // Tài liệu mới đứng đầu danh sách
         store.update { listOf(document) + it }
@@ -32,12 +36,15 @@ class FakeDocumentRepositoryImpl : DocumentRepository {
     private companion object {
         // Dùng chung giữa mọi instance: thêm ở màn này thì Trang chủ / Thư viện thấy ngay.
         // Chỉ lưu trong bộ nhớ -> tắt app là mất (bản Firebase của Bạn B sẽ thay thế).
+        private const val DAY = 86_400_000L
+        private val now = System.currentTimeMillis()
+
         val store = MutableStateFlow(
             listOf(
-                Document("1", "Bài giảng Kinh tế vận tải", DocumentType.PDF, Category.ECONOMICS, 8.6, true, 0.5f, courseId = "c1"),
-                Document("2", "Logistics cơ bản", DocumentType.PDF, Category.LOGISTICS, 12.6, false, 0.2f, courseId = "c2"),
-                Document("3", "Pháp luật hàng hải", DocumentType.DOCX, Category.LAW, 2.1, false, 0.0f, courseId = "c3"),
-                Document("4", "Bài tập Xác suất thống kê", DocumentType.PDF, Category.ECONOMICS, 6.7, true, 0.8f, courseId = "c4")
+                Document("1", "Bài giảng Kinh tế vận tải", DocumentType.PDF, Category.ECONOMICS, 8.6, true, 0.5f, courseId = "KTVT", uploadedAt = now - 5 * DAY, viewCount = 320),
+                Document("2", "Logistics cơ bản", DocumentType.PDF, Category.LOGISTICS, 12.6, false, 0.2f, courseId = "LOG", uploadedAt = now - 2 * DAY, viewCount = 150),
+                Document("3", "Pháp luật hàng hải", DocumentType.DOCX, Category.LAW, 2.1, false, 0.0f, courseId = "PLHH", uploadedAt = now - 10 * DAY, viewCount = 45),
+                Document("4", "Bài tập Xác suất thống kê", DocumentType.PDF, Category.ECONOMICS, 6.7, true, 0.8f, courseId = "XSTK", uploadedAt = now - 1 * DAY, viewCount = 210)
             )
         )
     }

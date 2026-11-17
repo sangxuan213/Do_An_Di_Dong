@@ -3,7 +3,7 @@ package com.example.uthdocument.ui.courses
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.uthdocument.data.repository.FakeCourseRepositoryImpl
-import com.example.uthdocument.data.repository.FakeDocumentRepositoryImpl
+import com.example.uthdocument.data.AppContainer
 import com.example.uthdocument.domain.model.Course
 import com.example.uthdocument.domain.repository.CourseRepository
 import com.example.uthdocument.domain.repository.DocumentRepository
@@ -22,7 +22,7 @@ data class CoursesUiState(
 
 class CoursesViewModel(
     courseRepository: CourseRepository = FakeCourseRepositoryImpl(),
-    documentRepository: DocumentRepository = FakeDocumentRepositoryImpl()
+    documentRepository: DocumentRepository = AppContainer.documentRepository
 ) : ViewModel() {
 
     private val _query = MutableStateFlow("")

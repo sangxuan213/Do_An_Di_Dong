@@ -57,6 +57,7 @@ fun HomeScreen(
             items(recent, key = { "recent_${it.id}" }) { doc ->
                 DocumentItem(
                     document = doc,
+                    extraInfo = "Đã đọc ${(doc.progress * 100).toInt()}% • bấm để đọc tiếp",
                     isBookmarked = doc.id in bookmarkedIds,
                     onBookmarkClick = { bookmarkViewModel.toggle(doc.id) },
                     onClick = { onDocumentClick(doc.id) }

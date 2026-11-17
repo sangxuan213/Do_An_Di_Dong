@@ -158,9 +158,12 @@ private fun DocumentContent(
                 DocumentType.PDF -> {
                     if (document.filePath != null) {
                         // Tài liệu người dùng tự thêm: mở đúng tệp đã chọn
-                        PdfViewer(file = File(document.filePath), modifier = contentModifier)
+                        PdfViewer(file = File(document.filePath), modifier = contentModifier, documentId = document.id)
+                    } else if (document.fileUrl != null) {
+                        // Tài liệu trên Firebase: tải về máy (chỉ tải một lần) rồi xem
+                        RemotePdfViewer(document = document, modifier = contentModifier)
                     } else {
-                        SamplePdfViewer(modifier = contentModifier)
+                        SamplePdfViewer(documentId = document.id, modifier = contentModifier)
                     }
                 }
 
@@ -182,7 +185,7 @@ private fun DocumentContent(
  * TODO (phối hợp Bạn B): thay bằng tệp tải từ Firebase Storage về cacheDir -> truyền File đó vào PdfViewer.
  */
 @Composable
-private fun SamplePdfViewer(modifier: Modifier = Modifier) {
+private fun SamplePdfViewer(documentId: String, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     var file by remember { mutableStateOf<File?>(null) }
     var failed by remember { mutableStateOf(false) }
@@ -202,7 +205,7 @@ private fun SamplePdfViewer(modifier: Modifier = Modifier) {
 
     val current = file
     when {
-        current != null -> PdfViewer(file = current, modifier = modifier)
+        current != null -> PdfViewer(file = current, modifier = modifier, documentId = documentId)
         failed -> Box(modifier = modifier, contentAlignment = Alignment.Center) {
             Text(text = "Không tải được tệp PDF.", color = Color.Gray)
         }

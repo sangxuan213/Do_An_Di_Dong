@@ -6,7 +6,7 @@ import android.provider.OpenableColumns
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.uthdocument.data.repository.FakeCourseRepositoryImpl
-import com.example.uthdocument.data.repository.FakeDocumentRepositoryImpl
+import com.example.uthdocument.data.AppContainer
 import com.example.uthdocument.domain.model.Category
 import com.example.uthdocument.domain.model.Course
 import com.example.uthdocument.domain.model.Document
@@ -41,7 +41,7 @@ data class AddDocumentUiState(
 class AddDocumentViewModel(application: Application) : AndroidViewModel(application) {
 
     // TODO (phối hợp Bạn B): đổi sang bản Firebase (upload lên Storage + ghi metadata vào Firestore)
-    private val repository: DocumentRepository = FakeDocumentRepositoryImpl()
+    private val repository: DocumentRepository = AppContainer.documentRepository
 
     private val courseRepository: CourseRepository = FakeCourseRepositoryImpl()
 
@@ -131,7 +131,8 @@ class AddDocumentViewModel(application: Application) : AndroidViewModel(applicat
                         isDownloaded = true,
                         progress = 0f,
                         filePath = file.absolutePath,
-                        courseId = course?.id
+                        courseId = course?.id,
+                        uploadedAt = System.currentTimeMillis()
                     )
                 )
             }.onSuccess {

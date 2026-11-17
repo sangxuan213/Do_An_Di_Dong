@@ -27,10 +27,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.uthdocument.ui.bookmark.BookmarkViewModel
 import com.example.uthdocument.domain.model.Category
+import com.example.uthdocument.domain.model.Document
+import com.example.uthdocument.domain.model.DocumentSort
+import com.example.uthdocument.domain.model.DocumentStats
+import com.example.uthdocument.domain.model.DocumentType
+import com.example.uthdocument.ui.bookmark.BookmarkViewModel
 import com.example.uthdocument.ui.components.DocumentItem
+import com.example.uthdocument.ui.util.formatTimeAgo
 
 @Composable
 fun LibraryScreen(
@@ -42,7 +48,11 @@ fun LibraryScreen(
     val query = viewModel.query.collectAsState().value
     val selected = viewModel.selectedCategory.collectAsState().value
     val onlyBookmarked = viewModel.onlyBookmarked.collectAsState().value
+    val sort = viewModel.sort.collectAsState().value
+    val types = viewModel.types.collectAsState().value
+    val stats = viewModel.stats.collectAsState().value
     val bookmarkedIds = bookmarkViewModel.bookmarkedIds.collectAsState().value
+
     val shown = if (onlyBookmarked && documents != null) {
         documents.filter { it.id in bookmarkedIds }
     } else {
@@ -74,6 +84,7 @@ fun LibraryScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         )
 
+        // Hàng 1: danh mục + đã lưu
         LazyRow(
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -90,9 +101,7 @@ fun LibraryScreen(
                     selected = onlyBookmarked,
                     onClick = viewModel::toggleOnlyBookmarked,
                     label = { Text("Đã lưu") },
-                    leadingIcon = {
-                        Icon(Icons.Default.Bookmark, contentDescription = null)
-                    }
+                    leadingIcon = { Icon(Icons.Default.Bookmark, contentDescription = null) }
                 )
             }
             items(Category.entries) { category ->
@@ -104,24 +113,56 @@ fun LibraryScreen(
             }
         }
 
-        Box(modifier = Modifier.fillMaxSize()) {
-            when {
-                shown == null -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+        // Hàng 2: sắp xếp (chọn 1) + loại tệp (chọn nhiều, không chọn = tất cả)
+        LazyRow(
+            modifier = Modifier.padding(top = 4.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(DocumentSort.entries) { option ->
+                FilterChip(
+                    selected = sort == option,
+                    onClick = { viewModel.onSortSelected(option) },
+                    label = { Text(option.label) }
+                )
+            }
+            items(DocumentType.entries) { type ->
+                FilterChip(
+                    selected = type in types,
+                    onClick = { viewModel.toggleType(type) },
+                    label = { Text(type.extension) }
+                )
+            }
+        }
 
-                shown.isEmpty() -> Text(
+        if (shown != null) {
+            Text(
+                text = "${shown.size} kết quả",
+                fontSize = 12.sp,
+                color = Color.Gray,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp)
+            )
+        }
+
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (shown == null) {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            } else if (shown.isEmpty()) {
+                Text(
                     text = if (onlyBookmarked) "Bạn chưa lưu tài liệu nào." else "Không tìm thấy tài liệu phù hợp.",
                     color = Color.Gray,
                     modifier = Modifier.align(Alignment.Center)
                 )
-
-                else -> LazyColumn(
+            } else {
+                LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 88.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 88.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(shown, key = { it.id }) { doc ->
                         DocumentItem(
                             document = doc,
+                            extraInfo = infoText(doc, stats[doc.id]),
                             isBookmarked = doc.id in bookmarkedIds,
                             onBookmarkClick = { bookmarkViewModel.toggle(doc.id) },
                             onClick = { onDocumentClick(doc.id) }
@@ -131,4 +172,15 @@ fun LibraryScreen(
             }
         }
     }
+}
+
+/** Dòng phụ trên card: điểm sao, lượt xem, thời gian đăng. */
+private fun infoText(doc: Document, stats: DocumentStats?): String {
+    val rating = if (stats == null || stats.ratingCount == 0) {
+        "Chưa có đánh giá"
+    } else {
+        "★ ${"%.1f".format(stats.ratingAverage)} (${stats.ratingCount})"
+    }
+    val posted = if (doc.uploadedAt > 0) " • ${formatTimeAgo(doc.uploadedAt)}" else ""
+    return "$rating • ${doc.viewCount} lượt xem$posted"
 }

@@ -22,6 +22,9 @@ interface DocumentRepository {
     // Lấy các tài liệu thuộc một môn học
     fun getDocumentsByCourse(courseId: String): Flow<List<Document>>
 
+    // Tăng lượt xem của tài liệu lên 1
+    suspend fun incrementViewCount(id: String)
+
     // Thêm một tài liệu mới
     suspend fun addDocument(document: Document)
 }

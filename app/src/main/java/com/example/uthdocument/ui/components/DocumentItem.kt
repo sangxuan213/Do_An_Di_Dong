@@ -47,6 +47,7 @@ fun DocumentItem(
     modifier: Modifier = Modifier,
     isBookmarked: Boolean = false,
     onBookmarkClick: (() -> Unit)? = null,
+    extraInfo: String? = null,
     onClick: () -> Unit = {}
 ) {
     Card(
@@ -79,6 +80,9 @@ fun DocumentItem(
                     fontSize = 12.sp,
                     color = Color.Gray
                 )
+                if (extraInfo != null) {
+                    Text(text = extraInfo, fontSize = 12.sp, color = Color.Gray)
+                }
                 if (document.progress > 0f) {
                     Spacer(modifier = Modifier.height(6.dp))
                     LinearProgressIndicator(

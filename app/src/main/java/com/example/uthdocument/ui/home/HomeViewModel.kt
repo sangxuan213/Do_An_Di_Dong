@@ -2,7 +2,7 @@ package com.example.uthdocument.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.uthdocument.data.repository.FakeDocumentRepositoryImpl
+import com.example.uthdocument.data.AppContainer
 import com.example.uthdocument.domain.model.Document
 import com.example.uthdocument.domain.repository.DocumentRepository
 import kotlinx.coroutines.flow.SharingStarted
@@ -14,7 +14,7 @@ import kotlinx.coroutines.flow.stateIn
  * Sau này đổi FakeDocumentRepositoryImpl thành bản Firebase của Bạn B là xong, UI không phải sửa.
  */
 class HomeViewModel(
-    repository: DocumentRepository = FakeDocumentRepositoryImpl()
+    repository: DocumentRepository = AppContainer.documentRepository
 ) : ViewModel() {
 
     val recentDocuments: StateFlow<List<Document>?> = repository

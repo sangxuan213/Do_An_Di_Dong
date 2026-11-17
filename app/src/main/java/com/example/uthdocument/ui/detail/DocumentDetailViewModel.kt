@@ -2,7 +2,7 @@ package com.example.uthdocument.ui.detail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.uthdocument.data.repository.FakeDocumentRepositoryImpl
+import com.example.uthdocument.data.AppContainer
 import com.example.uthdocument.domain.model.Document
 import com.example.uthdocument.domain.repository.DocumentRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 sealed interface DetailUiState {
     data object Loading : DetailUiState
@@ -22,7 +23,7 @@ sealed interface DetailUiState {
 }
 
 class DocumentDetailViewModel(
-    private val repository: DocumentRepository = FakeDocumentRepositoryImpl()
+    private val repository: DocumentRepository = AppContainer.documentRepository
 ) : ViewModel() {
 
     private val documentId = MutableStateFlow<String?>(null)
@@ -40,7 +41,13 @@ class DocumentDetailViewModel(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), DetailUiState.Loading)
 
+    private var viewCounted = false
+
     fun load(id: String) {
         documentId.value = id
+        if (!viewCounted) {
+            viewCounted = true
+            viewModelScope.launch { repository.incrementViewCount(id) }
+        }
     }
 }

@@ -8,12 +8,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
+import com.example.uthdocument.data.AppContainer
 import com.example.uthdocument.navigation.AppNavigation
 import com.example.uthdocument.ui.theme.UTHDocumentTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        AppContainer.init(applicationContext)
         enableEdgeToEdge()
         setContent {
             UTHDocumentTheme {

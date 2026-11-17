@@ -1,12 +1,14 @@
 package com.example.uthdocument.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.NavType
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.uthdocument.data.AppContainer
 import com.example.uthdocument.ui.add.AddDocumentScreen
 import com.example.uthdocument.ui.courses.CourseDetailScreen
 import com.example.uthdocument.ui.detail.DocumentDetailScreen
@@ -26,24 +28,25 @@ object Routes {
 
 @Composable
 fun AppNavigation(navController: NavHostController = rememberNavController()) {
-    NavHost(navController = navController, startDestination = Routes.LOGIN) {
+    // Đã đăng nhập từ lần trước thì vào thẳng màn hình chính
+    val startDestination = remember {
+        if (AppContainer.sessionRepository.isLoggedIn()) Routes.MAIN else Routes.LOGIN
+    }
+
+    NavHost(navController = navController, startDestination = startDestination) {
         
         // Màn hình Đăng nhập
         composable(Routes.LOGIN) {
             LoginScreen(
-                onLoginClick = { studentId, password ->
-                    // TODO: Gọi API kiểm tra đăng nhập thực tế ở đây
-                    // Giả lập đăng nhập thành công
-                    if (studentId.isNotBlank() && password.isNotBlank()) {
-                        navController.navigate(Routes.MAIN) {
-                            // Xóa lịch sử điều hướng, không cho user bấm Back quay lại trang Login
-                            popUpTo(Routes.LOGIN) { inclusive = true }
-                        }
+                onLoginSuccess = {
+                    navController.navigate(Routes.MAIN) {
+                        // Xóa lịch sử điều hướng, không cho user bấm Back quay lại trang Login
+                        popUpTo(Routes.LOGIN) { inclusive = true }
                     }
                 }
             )
         }
-        
+
         // Màn hình Chính (chứa Bottom Navigation)
         composable(Routes.MAIN) {
             MainScreen(
