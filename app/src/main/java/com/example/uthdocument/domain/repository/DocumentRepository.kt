@@ -27,4 +27,10 @@ interface DocumentRepository {
 
     // Thêm một tài liệu mới
     suspend fun addDocument(document: Document)
+
+    // Lấy danh sách tài liệu do người dùng đăng tải
+    fun getMyDocuments(uid: String): Flow<List<Document>>
+
+    // Xóa tài liệu theo id
+    suspend fun deleteDocument(id: String)
 }

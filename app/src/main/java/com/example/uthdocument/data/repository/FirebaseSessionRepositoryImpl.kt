@@ -8,6 +8,7 @@ import com.google.firebase.FirebaseTooManyRequestsException
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthException
 import com.google.firebase.auth.FirebaseAuthRecentLoginRequiredException
+import com.google.firebase.auth.FirebaseAuthUserCollisionException
 import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
@@ -28,6 +29,43 @@ class FirebaseSessionRepositoryImpl(
 
     override suspend fun login(identifier: String, password: String): Result<Unit> = runAuth {
         auth.signInWithEmailAndPassword(toEmail(identifier), password).await()
+        syncFcmToken()
+    }
+
+    override suspend fun register(
+        fullName: String,
+        studentId: String,
+        faculty: String,
+        className: String,
+        email: String,
+        password: String
+    ): Result<Unit> = runAuth {
+        val loginEmail = email.trim().ifEmpty { toEmail(studentId) }
+        val result = auth.createUserWithEmailAndPassword(loginEmail, password).await()
+        val uid = result.user?.uid
+            ?: throw AuthException("Không tạo được tài khoản. Vui lòng thử lại.")
+
+        // Tạo hồ sơ users/{uid}. Vai trò luôn là STUDENT: quyền cao hơn do quản trị viên cấp trong console.
+        try {
+            firestore.collection("users").document(uid)
+                .set(
+                    mapOf(
+                        "uid" to uid,
+                        "email" to loginEmail,
+                        "fullName" to fullName.trim(),
+                        "studentId" to studentId.trim(),
+                        "faculty" to faculty.trim(),
+                        "className" to className.trim(),
+                        "role" to "STUDENT"
+                    ),
+                    SetOptions.merge()
+                )
+                .await()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            throw AuthException("Đã tạo tài khoản nhưng chưa lưu được hồ sơ. Hãy báo Bạn B kiểm tra Firestore Rules.")
+        }
         syncFcmToken()
     }
 
@@ -85,6 +123,8 @@ class FirebaseSessionRepositoryImpl(
             "Vì lý do bảo mật, hãy đăng xuất rồi đăng nhập lại trước khi đổi mật khẩu."
         this is FirebaseAuthWeakPasswordException ->
             "Mật khẩu quá yếu, cần ít nhất 6 ký tự."
+        this is FirebaseAuthUserCollisionException ->
+            "Email hoặc mã số này đã được đăng ký. Hãy quay lại và đăng nhập."
         this is FirebaseAuthException -> when (errorCode) {
             "ERROR_INVALID_EMAIL" -> "Mã số hoặc email không hợp lệ."
             "ERROR_USER_DISABLED" -> "Tài khoản này đã bị vô hiệu hóa."

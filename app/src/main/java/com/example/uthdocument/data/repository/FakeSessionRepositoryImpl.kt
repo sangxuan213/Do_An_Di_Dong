@@ -18,6 +18,18 @@ class FakeSessionRepositoryImpl : SessionRepository {
             Result.failure(AuthException("Sai tài khoản hoặc mật khẩu."))
         }
 
+    override suspend fun register(
+        fullName: String,
+        studentId: String,
+        faculty: String,
+        className: String,
+        email: String,
+        password: String
+    ): Result<Unit> {
+        loggedIn = true
+        return Result.success(Unit)
+    }
+
     override fun logout() {
         loggedIn = false
     }

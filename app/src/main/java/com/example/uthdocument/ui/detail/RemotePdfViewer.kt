@@ -3,6 +3,7 @@ package com.example.uthdocument.ui.detail
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
@@ -21,19 +22,24 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uthdocument.domain.model.Document
 import com.example.uthdocument.ui.theme.UthBlue
+import java.io.File
 
-/** Tải PDF từ Firebase Storage về máy (có thanh tiến độ) rồi hiển thị bằng PdfViewer. */
+/**
+ * Tải tệp của tài liệu từ Firebase Storage về máy (có thanh tiến độ, lỗi thì có nút "Thử lại"),
+ * tải xong thì gọi content(file) để hiển thị. Dùng chung cho PDF, DOCX, PPTX.
+ */
 @Composable
-fun RemotePdfViewer(
+fun RemoteFileContent(
     document: Document,
     modifier: Modifier = Modifier,
-    viewModel: DocumentDownloadViewModel = viewModel()
+    viewModel: DocumentDownloadViewModel = viewModel(),
+    content: @Composable (File) -> Unit
 ) {
     LaunchedEffect(document.id) { viewModel.load(document) }
     val state = viewModel.state.collectAsState().value
 
     when (state) {
-        is DownloadUiState.Ready -> PdfViewer(file = state.file, modifier = modifier, documentId = document.id)
+        is DownloadUiState.Ready -> Box(modifier = modifier) { content(state.file) }
 
         is DownloadUiState.Downloading -> Box(modifier = modifier, contentAlignment = Alignment.Center) {
             Column(
@@ -70,5 +76,17 @@ fun RemotePdfViewer(
                 Button(onClick = viewModel::retry) { Text("Thử lại") }
             }
         }
+    }
+}
+
+/** Tải PDF từ Firebase Storage về máy rồi hiển thị bằng PdfViewer. */
+@Composable
+fun RemotePdfViewer(
+    document: Document,
+    modifier: Modifier = Modifier,
+    viewModel: DocumentDownloadViewModel = viewModel()
+) {
+    RemoteFileContent(document = document, modifier = modifier, viewModel = viewModel) { file ->
+        PdfViewer(file = file, modifier = Modifier.fillMaxSize(), documentId = document.id)
     }
 }

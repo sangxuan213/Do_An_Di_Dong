@@ -13,6 +13,13 @@ object AppConfig {
      */
     const val USE_FAKE_DOCUMENTS = false
 
+    /**
+     * false = KHÔNG dùng Firebase Storage (chưa có gói Blaze): tệp tải lên từ máy (tối đa 10 MB) được cắt thành
+     *         các mảnh nhỏ lưu trong Firestore, ai có app cũng xem được.
+     * true  = tải tệp lên Firebase Storage (cần gói Blaze), không giới hạn 10 MB.
+     */
+    const val USE_FIREBASE_STORAGE = false
+
     /** Nếu người dùng nhập mã số (không có @) thì ghép thêm đuôi này để thành email đăng nhập. */
     const val EMAIL_DOMAIN = "ut.edu.vn"
 }

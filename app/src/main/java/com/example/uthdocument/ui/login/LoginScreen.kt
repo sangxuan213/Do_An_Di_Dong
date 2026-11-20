@@ -52,6 +52,7 @@ import com.example.uthdocument.R
 @Composable
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
+    onRegisterClick: () -> Unit = {},
     viewModel: LoginViewModel = viewModel()
 ) {
     val state = viewModel.uiState.collectAsState().value
@@ -145,6 +146,11 @@ fun LoginScreen(
         // Nút Quên mật khẩu
         TextButton(onClick = { showResetDialog = true }) {
             Text(text = "Quên mật khẩu?", color = uthTeal)
+        }
+
+        // Nút chuyển sang màn hình Đăng ký
+        TextButton(onClick = onRegisterClick) {
+            Text(text = "Chưa có tài khoản? Đăng ký", color = uthTeal)
         }
     }
 

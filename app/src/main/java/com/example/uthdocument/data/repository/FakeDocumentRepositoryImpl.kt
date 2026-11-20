@@ -33,6 +33,13 @@ class FakeDocumentRepositoryImpl : DocumentRepository {
         store.update { listOf(document) + it }
     }
 
+    override fun getMyDocuments(uid: String): Flow<List<Document>> =
+        store.map { docs -> docs.filter { it.uploadedBy == uid } }
+
+    override suspend fun deleteDocument(id: String) {
+        store.update { docs -> docs.filter { it.id != id } }
+    }
+
     private companion object {
         // Dùng chung giữa mọi instance: thêm ở màn này thì Trang chủ / Thư viện thấy ngay.
         // Chỉ lưu trong bộ nhớ -> tắt app là mất (bản Firebase của Bạn B sẽ thay thế).

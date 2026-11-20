@@ -32,6 +32,7 @@ class FirebaseProfileRepositoryImpl(
         )
     }
 
+    /** Vai trò chỉ lấy từ trường role trong Firestore; không suy ra từ email. */
     private fun parseRole(raw: String?): UserRole =
         UserRole.entries.firstOrNull { it.name.equals(raw?.trim(), ignoreCase = true) } ?: UserRole.STUDENT
 }

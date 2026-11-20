@@ -10,6 +10,16 @@ interface SessionRepository {
     /** identifier: mã số sinh viên / cán bộ hoặc email. */
     suspend fun login(identifier: String, password: String): Result<Unit>
 
+    /** Tạo tài khoản mới (vai trò luôn là STUDENT) và tự đăng nhập luôn. Email để trống thì dùng mã số@ut.edu.vn. */
+    suspend fun register(
+        fullName: String,
+        studentId: String,
+        faculty: String,
+        className: String,
+        email: String,
+        password: String
+    ): Result<Unit>
+
     fun logout()
 
     suspend fun sendPasswordReset(identifier: String): Result<Unit>

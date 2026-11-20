@@ -37,6 +37,11 @@ class ProgressAwareDocumentRepository(
 
     override suspend fun addDocument(document: Document) = delegate.addDocument(document)
 
+    override fun getMyDocuments(uid: String): Flow<List<Document>> =
+        delegate.getMyDocuments(uid).withProgress()
+
+    override suspend fun deleteDocument(id: String) = delegate.deleteDocument(id)
+
     private fun Flow<List<Document>>.withProgress(): Flow<List<Document>> =
         combine(this, progressRepository.progress) { docs, progressMap ->
             docs.map { doc -> doc.withProgress(progressMap) }
