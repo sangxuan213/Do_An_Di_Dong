@@ -1,22 +1,33 @@
 package com.example.uthdocument.ui.detail
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -30,8 +41,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import com.example.uthdocument.data.AppConfig
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -49,6 +63,7 @@ import java.io.File
 fun DocumentDetailScreen(
     documentId: String,
     onBack: () -> Unit,
+    onOpenChat: (recipientUid: String, recipientName: String) -> Unit = { _, _ -> },
     viewModel: DocumentDetailViewModel = viewModel(),
     bookmarkViewModel: BookmarkViewModel = viewModel(),
     interactionViewModel: DocumentInteractionViewModel = viewModel()
@@ -100,7 +115,11 @@ fun DocumentDetailScreen(
                     color = Color.Gray,
                     modifier = Modifier.align(Alignment.Center)
                 )
-                is DetailUiState.Success -> DocumentContent(state.document, interactionViewModel)
+                is DetailUiState.Success -> DocumentContent(
+                    document = state.document,
+                    interactionViewModel = interactionViewModel,
+                    onOpenChat = onOpenChat
+                )
             }
         }
     }
@@ -109,18 +128,91 @@ fun DocumentDetailScreen(
 @Composable
 private fun DocumentContent(
     document: Document,
-    interactionViewModel: DocumentInteractionViewModel
+    interactionViewModel: DocumentInteractionViewModel,
+    onOpenChat: (recipientUid: String, recipientName: String) -> Unit
 ) {
     val stats = interactionViewModel.stats.collectAsState().value
     val comments = interactionViewModel.comments.collectAsState().value
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
 
     Column(modifier = Modifier.fillMaxSize()) {
+        Card(
+            onClick = {
+                val name = document.uploaderName.ifBlank { "Giảng viên / Admin UTH" }
+                onOpenChat(document.uploadedBy, name)
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 6.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F1FF))
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = Color(0xFF002D58),
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = Icons.Default.AccountCircle,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(10.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Người đăng tải",
+                        fontSize = 11.sp,
+                        color = Color.Gray
+                    )
+                    Text(
+                        text = document.uploaderName.ifBlank { "Giảng viên / Admin UTH" },
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFF002D58)
+                    )
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    color = Color(0xFF007B7A)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Chat,
+                            contentDescription = "Nhắn tin",
+                            tint = Color.White,
+                            modifier = Modifier.size(14.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = "Nhắn tin",
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            }
+        }
+
         Text(
             text = "${document.type.extension} • ${"%.1f".format(document.sizeInMb)} MB • ${document.category.displayName}",
             fontSize = 12.sp,
             color = Color.Gray,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
         )
 
         DocumentActionBar(stats = stats, onToggleLike = interactionViewModel::toggleLike)
@@ -158,20 +250,17 @@ private fun DocumentContent(
                 DocumentType.PDF -> {
                     if (document.filePath != null) {
                         // Tài liệu người dùng tự thêm: mở đúng tệp đã chọn
-                        PdfViewer(file = File(document.filePath), modifier = contentModifier)
+                        PdfViewer(file = File(document.filePath), modifier = contentModifier, documentId = document.id)
+                    } else if (document.fileUrl != null) {
+                        // Tài liệu trên Firebase: tải về máy (chỉ tải một lần) rồi xem
+                        RemotePdfViewer(document = document, modifier = contentModifier)
                     } else {
-                        SamplePdfViewer(modifier = contentModifier)
+                        SamplePdfViewer(documentId = document.id, modifier = contentModifier)
                     }
                 }
 
-                else -> Box(modifier = contentModifier, contentAlignment = Alignment.Center) {
-                    Text(
-                        text = "Chưa hỗ trợ xem trực tiếp định dạng ${document.type.extension}.",
-                        color = Color.Gray,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(24.dp)
-                    )
-                }
+                // Word / PowerPoint: xem phần chữ trong app, đầy đủ thì mở bằng ứng dụng khác
+                else -> OfficeDocumentViewer(document = document, modifier = contentModifier)
             }
         }
     }
@@ -182,7 +271,7 @@ private fun DocumentContent(
  * TODO (phối hợp Bạn B): thay bằng tệp tải từ Firebase Storage về cacheDir -> truyền File đó vào PdfViewer.
  */
 @Composable
-private fun SamplePdfViewer(modifier: Modifier = Modifier) {
+private fun SamplePdfViewer(documentId: String, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     var file by remember { mutableStateOf<File?>(null) }
     var failed by remember { mutableStateOf(false) }
@@ -190,6 +279,11 @@ private fun SamplePdfViewer(modifier: Modifier = Modifier) {
     LaunchedEffect(Unit) {
         runCatching {
             withContext(Dispatchers.IO) {
+                // 1) tệp đã có sẵn trên máy này (do chính mình đăng tải lên)
+                val local = File(File(context.filesDir, "documents"), "$documentId.pdf")
+                if (local.exists() && local.length() > 0) return@withContext local
+                // 2) tệp mẫu chỉ dùng khi chạy dữ liệu giả, tài liệu thật chưa có tệp thì báo rõ
+                if (!AppConfig.USE_FAKE_DOCUMENTS) throw IllegalStateException("Tài liệu chưa có tệp")
                 val out = File(context.cacheDir, "sample.pdf")
                 context.assets.open("sample.pdf").use { input ->
                     out.outputStream().use { output -> input.copyTo(output) }
@@ -202,9 +296,9 @@ private fun SamplePdfViewer(modifier: Modifier = Modifier) {
 
     val current = file
     when {
-        current != null -> PdfViewer(file = current, modifier = modifier)
+        current != null -> PdfViewer(file = current, modifier = modifier, documentId = documentId)
         failed -> Box(modifier = modifier, contentAlignment = Alignment.Center) {
-            Text(text = "Không tải được tệp PDF.", color = Color.Gray)
+            Text(text = "Tài liệu này chưa có tệp đính kèm.", color = Color.Gray)
         }
         else -> Box(modifier = modifier, contentAlignment = Alignment.Center) {
             CircularProgressIndicator()

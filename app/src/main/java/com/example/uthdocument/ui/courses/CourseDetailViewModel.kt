@@ -3,7 +3,7 @@ package com.example.uthdocument.ui.courses
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.uthdocument.data.repository.FakeCourseRepositoryImpl
-import com.example.uthdocument.data.repository.FakeDocumentRepositoryImpl
+import com.example.uthdocument.data.AppContainer
 import com.example.uthdocument.domain.model.Course
 import com.example.uthdocument.domain.model.Document
 import com.example.uthdocument.domain.repository.CourseRepository
@@ -25,7 +25,7 @@ sealed interface CourseDetailUiState {
 
 class CourseDetailViewModel(
     private val courseRepository: CourseRepository = FakeCourseRepositoryImpl(),
-    private val documentRepository: DocumentRepository = FakeDocumentRepositoryImpl()
+    private val documentRepository: DocumentRepository = AppContainer.documentRepository
 ) : ViewModel() {
 
     private val courseId = MutableStateFlow<String?>(null)
