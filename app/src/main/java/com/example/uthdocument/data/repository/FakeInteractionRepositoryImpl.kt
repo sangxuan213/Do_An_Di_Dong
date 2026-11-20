@@ -14,6 +14,9 @@ class FakeInteractionRepositoryImpl : InteractionRepository {
     override fun getStats(documentId: String): Flow<DocumentStats> =
         store.map { (it[documentId] ?: DocState()).toStats() }
 
+    override fun getAllStats(): Flow<Map<String, DocumentStats>> =
+        store.map { map -> map.mapValues { (_, state) -> state.toStats() } }
+
     override fun getComments(documentId: String): Flow<List<Comment>> =
         store.map { (it[documentId] ?: DocState()).comments.sortedByDescending { c -> c.timestamp } }
 

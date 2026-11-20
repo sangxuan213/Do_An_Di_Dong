@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths>
+    <!-- Tệp tài liệu đã tải về hoặc tự thêm: filesDir/documents/ -->
+    <files-path name="documents" path="documents/" />
+    <!-- Tệp mẫu (dữ liệu giả) chép vào cache -->
+    <cache-path name="cache" path="." />
+</paths>

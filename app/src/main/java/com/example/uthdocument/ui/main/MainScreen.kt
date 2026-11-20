@@ -51,8 +51,13 @@ fun MainScreen(
     onDocumentClick: (String) -> Unit = {},
     onAddDocumentClick: () -> Unit = {},
     onCourseClick: (String) -> Unit = {},
+    onNavigateToAdmin: () -> Unit = {},
+    onNavigateToChat: () -> Unit = {},
+    onNavigateToMyDocuments: () -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
+    RequestNotificationPermission()
+
     // rememberSaveable: quay lại từ màn chi tiết vẫn ở đúng tab cũ
     var selectedItem by rememberSaveable { mutableIntStateOf(0) }
     val items = listOf(
@@ -131,10 +136,14 @@ fun MainScreen(
                 .padding(innerPadding)
         ) {
             when (items[selectedItem]) {
-                BottomNavItem.Home -> HomeScreen(onDocumentClick = onDocumentClick)
+                BottomNavItem.Home -> HomeScreen(onDocumentClick = onDocumentClick, onNavigateToChat = onNavigateToChat)
                 BottomNavItem.Library -> LibraryScreen(onDocumentClick = onDocumentClick)
                 BottomNavItem.Courses -> CoursesScreen(onCourseClick = onCourseClick)
-                BottomNavItem.Profile -> ProfileScreen(onLogout = onLogout)
+                BottomNavItem.Profile -> ProfileScreen(
+                    onLogout = onLogout,
+                    onNavigateToAdmin = onNavigateToAdmin,
+                    onNavigateToMyDocuments = onNavigateToMyDocuments
+                )
                 BottomNavItem.Empty -> {} // Không làm gì cả, đây là khoảng trống cho FAB
             }
         }

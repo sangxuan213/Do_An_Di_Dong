@@ -2,10 +2,16 @@ package com.example.uthdocument.ui.library
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.uthdocument.data.repository.FakeDocumentRepositoryImpl
+import com.example.uthdocument.data.AppContainer
+import com.example.uthdocument.data.repository.FakeInteractionRepositoryImpl
 import com.example.uthdocument.domain.model.Category
 import com.example.uthdocument.domain.model.Document
+import com.example.uthdocument.domain.model.DocumentSort
+import com.example.uthdocument.domain.model.DocumentStats
+import com.example.uthdocument.domain.model.DocumentType
 import com.example.uthdocument.domain.repository.DocumentRepository
+import com.example.uthdocument.domain.repository.InteractionRepository
+import com.example.uthdocument.ui.util.normalizedForSearch
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -15,10 +21,10 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
-import java.text.Normalizer
 
 class LibraryViewModel(
-    private val repository: DocumentRepository = FakeDocumentRepositoryImpl()
+    private val repository: DocumentRepository = AppContainer.documentRepository,
+    interactionRepository: InteractionRepository = FakeInteractionRepositoryImpl()
 ) : ViewModel() {
 
     private val _query = MutableStateFlow("")
@@ -30,15 +36,36 @@ class LibraryViewModel(
     private val _onlyBookmarked = MutableStateFlow(false)
     val onlyBookmarked: StateFlow<Boolean> = _onlyBookmarked.asStateFlow()
 
+    private val _sort = MutableStateFlow(DocumentSort.NEWEST)
+    val sort: StateFlow<DocumentSort> = _sort.asStateFlow()
+
+    /** Rỗng = không lọc theo loại tệp (hiện tất cả). */
+    private val _types = MutableStateFlow<Set<DocumentType>>(emptySet())
+    val types: StateFlow<Set<DocumentType>> = _types.asStateFlow()
+
+    private val allStats = interactionRepository.getAllStats()
+
+    /** Số liệu tương tác (điểm sao, số đánh giá) theo id tài liệu, để hiện trên card. */
+    val stats: StateFlow<Map<String, DocumentStats>> = allStats
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
     /** null = đang tải */
     @OptIn(ExperimentalCoroutinesApi::class)
-    val documents: StateFlow<List<Document>?> = _selectedCategory
-        .flatMapLatest { category -> repository.getDocumentsByCategory(category) }
-        .combine(_query) { docs, q ->
-            val key = q.trim().normalized()
-            if (key.isEmpty()) docs else docs.filter { it.title.normalized().contains(key) }
-        }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
+    val documents: StateFlow<List<Document>?> = combine(
+        _selectedCategory.flatMapLatest { category -> repository.getDocumentsByCategory(category) },
+        allStats,
+        _query,
+        _sort,
+        _types
+    ) { docs, statsMap, q, sort, types ->
+        val key = q.trim().normalizedForSearch()
+        docs
+            .filter { doc ->
+                (key.isEmpty() || doc.title.normalizedForSearch().contains(key)) &&
+                    (types.isEmpty() || doc.type in types)
+            }
+            .sortedWith(comparatorFor(sort, statsMap))
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun onQueryChange(value: String) {
         _query.value = value
@@ -52,10 +79,20 @@ class LibraryViewModel(
         _onlyBookmarked.update { !it }
     }
 
-    // Bỏ dấu + chữ thường để gõ "kinh te" vẫn ra "Kinh tế"
-    private fun String.normalized(): String =
-        Normalizer.normalize(this, Normalizer.Form.NFD)
-            .replace("\\p{InCombiningDiacriticalMarks}+".toRegex(), "")
-            .replace('đ', 'd').replace('Đ', 'D')
-            .lowercase()
+    fun onSortSelected(sort: DocumentSort) {
+        _sort.value = sort
+    }
+
+    fun toggleType(type: DocumentType) {
+        _types.update { current -> if (type in current) current - type else current + type }
+    }
+
+    private fun comparatorFor(sort: DocumentSort, statsMap: Map<String, DocumentStats>): Comparator<Document> =
+        when (sort) {
+            DocumentSort.NEWEST -> compareByDescending<Document> { it.uploadedAt }
+            DocumentSort.MOST_VIEWED -> compareByDescending<Document> { it.viewCount }
+            // Điểm trung bình cao trước; bằng điểm thì ai nhiều lượt đánh giá hơn đứng trước
+            DocumentSort.TOP_RATED -> compareByDescending<Document> { statsMap[it.id]?.ratingAverage ?: 0.0 }
+                .thenByDescending { statsMap[it.id]?.ratingCount ?: 0 }
+        }
 }

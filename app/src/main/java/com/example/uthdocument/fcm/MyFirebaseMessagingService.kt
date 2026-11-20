@@ -8,6 +8,7 @@ import androidx.core.app.NotificationCompat
 import com.example.uthdocument.R
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 
@@ -17,9 +18,10 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
         super.onNewToken(token)
         val uid = FirebaseAuth.getInstance().currentUser?.uid
         if (uid != null) {
+            val data = mapOf("fcmToken" to token)
             FirebaseFirestore.getInstance().collection("users")
                 .document(uid)
-                .update("fcmToken", token)
+                .set(data, SetOptions.merge())
         }
     }
 

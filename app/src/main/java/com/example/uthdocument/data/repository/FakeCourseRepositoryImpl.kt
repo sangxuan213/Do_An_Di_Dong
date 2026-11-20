@@ -10,12 +10,12 @@ import kotlinx.coroutines.flow.map
 class FakeCourseRepositoryImpl : CourseRepository {
 
     private val courses = listOf(
-        Course("c1", "KTVT", "Kinh tế vận tải", Category.ECONOMICS),
-        Course("c2", "LOG", "Logistics cơ bản", Category.LOGISTICS),
-        Course("c3", "PLHH", "Pháp luật hàng hải", Category.LAW),
-        Course("c4", "XSTK", "Xác suất thống kê", Category.ECONOMICS),
-        Course("c5", "QTCU", "Quản trị chuỗi cung ứng", Category.LOGISTICS),
-        Course("c6", "LTMQT", "Luật thương mại quốc tế", Category.LAW)
+        Course("KTVT", "KTVT", "Kinh tế vận tải", Category.ECONOMICS),
+        Course("LOG", "LOG", "Logistics cơ bản", Category.LOGISTICS),
+        Course("PLHH", "PLHH", "Pháp luật hàng hải", Category.LAW),
+        Course("XSTK", "XSTK", "Xác suất thống kê", Category.ECONOMICS),
+        Course("QTCU", "QTCU", "Quản trị chuỗi cung ứng", Category.LOGISTICS),
+        Course("LTMQT", "LTMQT", "Luật thương mại quốc tế", Category.LAW)
     )
 
     override fun getCourses(): Flow<List<Course>> = flowOf(courses)
