@@ -18,8 +18,7 @@ data class Document(
     val uploadedAt: Long = 0L, // Thời điểm đăng (mili-giây), dùng để sắp xếp "Mới nhất"
     val viewCount: Int = 0, // Số lượt xem, dùng để sắp xếp "Xem nhiều"
     val fileUrl: String? = null, // Đường dẫn tải tệp trên Firebase Storage; null = tệp chỉ có trên máy hoặc dữ liệu giả
-    val uploadedBy: String = "",
-    val uploaderName: String = "Giảng viên / Admin UTH"
+    val uploaderId: String? = null // Id người đăng tài liệu; null = không rõ
 )
 
 enum class DocumentType(val extension: String) {

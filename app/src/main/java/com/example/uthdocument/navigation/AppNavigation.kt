@@ -11,31 +11,33 @@ import androidx.navigation.navArgument
 import com.example.uthdocument.data.AppContainer
 import com.example.uthdocument.ui.add.AddDocumentScreen
 import com.example.uthdocument.ui.admin.AdminScreen
-import com.example.uthdocument.ui.chat.ChatDetailScreen
-import com.example.uthdocument.ui.chat.ChatListScreen
+import com.example.uthdocument.ui.chat.ChatScreen
+import com.example.uthdocument.ui.chat.ConversationsScreen
 import com.example.uthdocument.ui.courses.CourseDetailScreen
 import com.example.uthdocument.ui.detail.DocumentDetailScreen
 import com.example.uthdocument.ui.login.LoginScreen
 import com.example.uthdocument.ui.login.RegisterScreen
 import com.example.uthdocument.ui.main.MainScreen
-import com.example.uthdocument.ui.mydocuments.MyDocumentsScreen
+import com.example.uthdocument.ui.social.MyDocumentsScreen
+import com.example.uthdocument.ui.social.UserProfileScreen
 
 object Routes {
     const val LOGIN = "login"
     const val REGISTER = "register"
     const val MAIN = "main"
     const val ADMIN = "admin"
-    const val CHAT_LIST = "chat_list"
-    const val CHAT_DETAIL = "chat_detail?chatId={chatId}&recipientUid={recipientUid}&recipientName={recipientName}"
-    const val MY_DOCUMENTS = "my_documents"
     const val DOCUMENT = "document/{id}"
     const val ADD_DOCUMENT = "add_document"
     const val COURSE = "course/{id}"
+    const val USER = "user/{uid}"
+    const val MY_DOCUMENTS = "my_documents"
+    const val CHATS = "chats"
+    const val CHAT = "chat/{chatId}"
 
     fun document(id: String) = "document/$id"
     fun course(id: String) = "course/$id"
-    fun chatDetail(chatId: String = "", recipientUid: String = "", recipientName: String = "") =
-        "chat_detail?chatId=$chatId&recipientUid=$recipientUid&recipientName=$recipientName"
+    fun user(uid: String) = "user/$uid"
+    fun chat(chatId: String) = "chat/$chatId"
 }
 
 @Composable
@@ -79,48 +81,13 @@ fun AppNavigation(navController: NavHostController = rememberNavController()) {
                 onAddDocumentClick = { navController.navigate(Routes.ADD_DOCUMENT) },
                 onCourseClick = { id -> navController.navigate(Routes.course(id)) },
                 onNavigateToAdmin = { navController.navigate(Routes.ADMIN) },
-                onNavigateToChat = { navController.navigate(Routes.CHAT_LIST) },
                 onNavigateToMyDocuments = { navController.navigate(Routes.MY_DOCUMENTS) },
+                onNavigateToMessages = { navController.navigate(Routes.CHATS) },
                 onLogout = {
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(Routes.MAIN) { inclusive = true }
                     }
                 }
-            )
-        }
-
-        // Màn hình tài liệu của tôi
-        composable(Routes.MY_DOCUMENTS) {
-            MyDocumentsScreen(
-                onBack = { navController.popBackStack() },
-                onDocumentClick = { id -> navController.navigate(Routes.document(id)) }
-            )
-        }
-
-        // Màn hình danh sách nhắn tin
-        composable(Routes.CHAT_LIST) {
-            ChatListScreen(
-                onBack = { navController.popBackStack() },
-                onOpenChat = { chatId, recipientUid, recipientName ->
-                    navController.navigate(Routes.chatDetail(chatId, recipientUid, recipientName))
-                }
-            )
-        }
-
-        // Màn hình chi tiết nhắn tin 1-1
-        composable(
-            route = Routes.CHAT_DETAIL,
-            arguments = listOf(
-                navArgument("chatId") { type = NavType.StringType; defaultValue = "" },
-                navArgument("recipientUid") { type = NavType.StringType; defaultValue = "" },
-                navArgument("recipientName") { type = NavType.StringType; defaultValue = "" }
-            )
-        ) { entry ->
-            ChatDetailScreen(
-                chatId = entry.arguments?.getString("chatId").orEmpty(),
-                recipientUid = entry.arguments?.getString("recipientUid").orEmpty(),
-                recipientName = entry.arguments?.getString("recipientName").orEmpty(),
-                onBack = { navController.popBackStack() }
             )
         }
 
@@ -149,6 +116,47 @@ fun AppNavigation(navController: NavHostController = rememberNavController()) {
             )
         }
 
+        // Tài liệu mình đã đăng
+        composable(Routes.MY_DOCUMENTS) {
+            MyDocumentsScreen(
+                onBack = { navController.popBackStack() },
+                onDocumentClick = { id -> navController.navigate(Routes.document(id)) },
+                onAddDocument = { navController.navigate(Routes.ADD_DOCUMENT) }
+            )
+        }
+
+        // Danh sách tin nhắn
+        composable(Routes.CHATS) {
+            ConversationsScreen(
+                onBack = { navController.popBackStack() },
+                onOpenChat = { chatId -> navController.navigate(Routes.chat(chatId)) }
+            )
+        }
+
+        // Một cuộc trò chuyện
+        composable(
+            route = Routes.CHAT,
+            arguments = listOf(navArgument("chatId") { type = NavType.StringType })
+        ) { entry ->
+            ChatScreen(
+                chatId = entry.arguments?.getString("chatId").orEmpty(),
+                onBack = { navController.popBackStack() }
+            )
+        }
+
+        // Trang cá nhân công khai của một người (người đăng tài liệu)
+        composable(
+            route = Routes.USER,
+            arguments = listOf(navArgument("uid") { type = NavType.StringType })
+        ) { entry ->
+            UserProfileScreen(
+                uid = entry.arguments?.getString("uid").orEmpty(),
+                onBack = { navController.popBackStack() },
+                onDocumentClick = { id -> navController.navigate(Routes.document(id)) },
+                onOpenChat = { chatId -> navController.navigate(Routes.chat(chatId)) }
+            )
+        }
+
         // Màn hình chi tiết / xem tài liệu
         composable(
             route = Routes.DOCUMENT,
@@ -157,9 +165,7 @@ fun AppNavigation(navController: NavHostController = rememberNavController()) {
             DocumentDetailScreen(
                 documentId = entry.arguments?.getString("id").orEmpty(),
                 onBack = { navController.popBackStack() },
-                onOpenChat = { recipientUid, recipientName ->
-                    navController.navigate(Routes.chatDetail("", recipientUid, recipientName))
-                }
+                onUploaderClick = { uid -> navController.navigate(Routes.user(uid)) }
             )
         }
     }

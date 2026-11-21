@@ -30,17 +30,17 @@ class ProgressAwareDocumentRepository(
     override fun getDocumentsByCourse(courseId: String): Flow<List<Document>> =
         delegate.getDocumentsByCourse(courseId).withProgress()
 
+    override fun getDocumentsByUploader(uploaderId: String): Flow<List<Document>> =
+        delegate.getDocumentsByUploader(uploaderId).withProgress()
+
+    override suspend fun deleteDocument(id: String) = delegate.deleteDocument(id)
+
     // Màn chi tiết không hiện tiến độ nên không gắn vào, tránh phát lại mỗi lần lật trang
     override fun getDocumentById(id: String): Flow<Document?> = delegate.getDocumentById(id)
 
     override suspend fun incrementViewCount(id: String) = delegate.incrementViewCount(id)
 
     override suspend fun addDocument(document: Document) = delegate.addDocument(document)
-
-    override fun getMyDocuments(uid: String): Flow<List<Document>> =
-        delegate.getMyDocuments(uid).withProgress()
-
-    override suspend fun deleteDocument(id: String) = delegate.deleteDocument(id)
 
     private fun Flow<List<Document>>.withProgress(): Flow<List<Document>> =
         combine(this, progressRepository.progress) { docs, progressMap ->

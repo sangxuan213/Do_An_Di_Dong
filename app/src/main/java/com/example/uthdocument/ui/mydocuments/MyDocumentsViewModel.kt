@@ -20,7 +20,7 @@ class MyDocumentsViewModel(
         get() = auth.currentUser?.uid.orEmpty()
 
     val myDocuments: StateFlow<List<Document>?> = repository
-        .getMyDocuments("")
+        .getDocumentsByUploader(currentUid)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun deleteDocument(id: String) {

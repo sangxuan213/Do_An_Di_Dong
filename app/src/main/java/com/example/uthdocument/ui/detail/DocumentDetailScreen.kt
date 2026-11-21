@@ -11,23 +11,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
@@ -52,6 +47,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uthdocument.domain.model.Document
+import com.example.uthdocument.ui.social.UploaderRow
 import com.example.uthdocument.ui.bookmark.BookmarkViewModel
 import com.example.uthdocument.domain.model.DocumentType
 import kotlinx.coroutines.Dispatchers
@@ -63,7 +59,7 @@ import java.io.File
 fun DocumentDetailScreen(
     documentId: String,
     onBack: () -> Unit,
-    onOpenChat: (recipientUid: String, recipientName: String) -> Unit = { _, _ -> },
+    onUploaderClick: (String) -> Unit = {},
     viewModel: DocumentDetailViewModel = viewModel(),
     bookmarkViewModel: BookmarkViewModel = viewModel(),
     interactionViewModel: DocumentInteractionViewModel = viewModel()
@@ -115,11 +111,7 @@ fun DocumentDetailScreen(
                     color = Color.Gray,
                     modifier = Modifier.align(Alignment.Center)
                 )
-                is DetailUiState.Success -> DocumentContent(
-                    document = state.document,
-                    interactionViewModel = interactionViewModel,
-                    onOpenChat = onOpenChat
-                )
+                is DetailUiState.Success -> DocumentContent(state.document, interactionViewModel, onUploaderClick)
             }
         }
     }
@@ -129,84 +121,15 @@ fun DocumentDetailScreen(
 private fun DocumentContent(
     document: Document,
     interactionViewModel: DocumentInteractionViewModel,
-    onOpenChat: (recipientUid: String, recipientName: String) -> Unit
+    onUploaderClick: (String) -> Unit
 ) {
     val stats = interactionViewModel.stats.collectAsState().value
     val comments = interactionViewModel.comments.collectAsState().value
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        Card(
-            onClick = {
-                val name = document.uploaderName.ifBlank { "Giảng viên / Admin UTH" }
-                onOpenChat(document.uploadedBy, name)
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 6.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F1FF))
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
-            ) {
-                Surface(
-                    shape = CircleShape,
-                    color = Color(0xFF002D58),
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Default.AccountCircle,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.width(10.dp))
-
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Người đăng tải",
-                        fontSize = 11.sp,
-                        color = Color.Gray
-                    )
-                    Text(
-                        text = document.uploaderName.ifBlank { "Giảng viên / Admin UTH" },
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF002D58)
-                    )
-                }
-
-                Surface(
-                    shape = RoundedCornerShape(20.dp),
-                    color = Color(0xFF007B7A)
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Chat,
-                            contentDescription = "Nhắn tin",
-                            tint = Color.White,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = "Nhắn tin",
-                            color = Color.White,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
-        }
+        // Người đăng thật (bấm vào để xem trang cá nhân và nhắn tin)
+        UploaderRow(uploaderId = document.uploaderId, onClick = onUploaderClick)
 
         Text(
             text = "${document.type.extension} • ${"%.1f".format(document.sizeInMb)} MB • ${document.category.displayName}",

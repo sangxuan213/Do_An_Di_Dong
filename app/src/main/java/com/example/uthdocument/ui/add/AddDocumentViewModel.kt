@@ -16,7 +16,6 @@ import com.example.uthdocument.domain.model.Document
 import com.example.uthdocument.domain.model.DocumentType
 import com.example.uthdocument.domain.repository.CourseRepository
 import com.example.uthdocument.domain.repository.DocumentRepository
-import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -196,13 +195,6 @@ class AddDocumentViewModel(application: Application) : AndroidViewModel(applicat
                     input.use { src -> out.outputStream().use { dst -> src.copyTo(dst) } }
                     out
                 }
-                val currentUser = FirebaseAuth.getInstance().currentUser
-                val myUid = currentUser?.uid.orEmpty()
-                val myEmail = currentUser?.email.orEmpty()
-                val myName = currentUser?.displayName?.takeIf { it.isNotBlank() }
-                    ?: myEmail.substringBefore('@').takeIf { it.isNotBlank() }
-                    ?: "Sinh viên UTH"
-
                 repository.addDocument(
                     Document(
                         id = id,
@@ -214,8 +206,7 @@ class AddDocumentViewModel(application: Application) : AndroidViewModel(applicat
                         filePath = file.absolutePath,
                         courseId = courseCode.ifBlank { null },
                         uploadedAt = System.currentTimeMillis(),
-                        uploadedBy = if (myUid.isNotBlank()) myUid else myEmail,
-                        uploaderName = myName
+                        uploaderId = AppContainer.userRepository.currentUserId()
                     )
                 )
             }.onSuccess {
@@ -245,13 +236,6 @@ class AddDocumentViewModel(application: Application) : AndroidViewModel(applicat
             }
             val sizeBytes = check.getOrDefault(0L)
 
-            val currentUser = FirebaseAuth.getInstance().currentUser
-            val myUid = currentUser?.uid.orEmpty()
-            val myEmail = currentUser?.email.orEmpty()
-            val myName = currentUser?.displayName?.takeIf { it.isNotBlank() }
-                ?: myEmail.substringBefore('@').takeIf { it.isNotBlank() }
-                ?: "Sinh viên UTH"
-
             runCatching {
                 repository.addDocument(
                     Document(
@@ -263,8 +247,7 @@ class AddDocumentViewModel(application: Application) : AndroidViewModel(applicat
                         courseId = courseCode.ifBlank { null },
                         uploadedAt = System.currentTimeMillis(),
                         fileUrl = normalized.url,
-                        uploadedBy = if (myUid.isNotBlank()) myUid else myEmail,
-                        uploaderName = myName
+                        uploaderId = AppContainer.userRepository.currentUserId()
                     )
                 )
             }.onSuccess {

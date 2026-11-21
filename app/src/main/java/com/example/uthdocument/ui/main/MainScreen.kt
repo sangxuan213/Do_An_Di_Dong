@@ -52,8 +52,8 @@ fun MainScreen(
     onAddDocumentClick: () -> Unit = {},
     onCourseClick: (String) -> Unit = {},
     onNavigateToAdmin: () -> Unit = {},
-    onNavigateToChat: () -> Unit = {},
     onNavigateToMyDocuments: () -> Unit = {},
+    onNavigateToMessages: () -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
     RequestNotificationPermission()
@@ -136,13 +136,14 @@ fun MainScreen(
                 .padding(innerPadding)
         ) {
             when (items[selectedItem]) {
-                BottomNavItem.Home -> HomeScreen(onDocumentClick = onDocumentClick, onNavigateToChat = onNavigateToChat)
+                BottomNavItem.Home -> HomeScreen(onDocumentClick = onDocumentClick)
                 BottomNavItem.Library -> LibraryScreen(onDocumentClick = onDocumentClick)
                 BottomNavItem.Courses -> CoursesScreen(onCourseClick = onCourseClick)
                 BottomNavItem.Profile -> ProfileScreen(
                     onLogout = onLogout,
                     onNavigateToAdmin = onNavigateToAdmin,
-                    onNavigateToMyDocuments = onNavigateToMyDocuments
+                    onNavigateToMyDocuments = onNavigateToMyDocuments,
+                    onNavigateToMessages = onNavigateToMessages
                 )
                 BottomNavItem.Empty -> {} // Không làm gì cả, đây là khoảng trống cho FAB
             }

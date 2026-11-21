@@ -52,6 +52,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uthdocument.domain.model.UserProfile
 import com.example.uthdocument.domain.model.UserRole
 import com.example.uthdocument.ui.bookmark.BookmarkViewModel
+import com.example.uthdocument.ui.social.SocialShortcuts
 import com.example.uthdocument.ui.theme.UthBlue
 
 @Composable
@@ -59,6 +60,7 @@ fun ProfileScreen(
     onLogout: () -> Unit = {},
     onNavigateToAdmin: () -> Unit = {},
     onNavigateToMyDocuments: () -> Unit = {},
+    onNavigateToMessages: () -> Unit = {},
     viewModel: ProfileViewModel = viewModel(),
     bookmarkViewModel: BookmarkViewModel = viewModel()
 ) {
@@ -99,6 +101,10 @@ fun ProfileScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
+        SocialShortcuts(onMyDocuments = onNavigateToMyDocuments, onMessages = onNavigateToMessages)
+
+        Spacer(modifier = Modifier.height(16.dp))
+
         SectionCard {
             Row(
                 modifier = Modifier
@@ -119,21 +125,6 @@ fun ProfileScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(text = "Đổi mật khẩu", modifier = Modifier.weight(1f))
-                Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Color.Gray)
-            }
-            HorizontalDivider()
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { onNavigateToMyDocuments() }
-                    .padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "📄 Tài liệu tôi đã đăng",
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f)
-                )
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Color.Gray)
             }
             if (profile.role == UserRole.ADMIN) {

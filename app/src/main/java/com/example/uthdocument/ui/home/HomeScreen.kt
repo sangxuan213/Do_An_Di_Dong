@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PictureAsPdf
@@ -38,8 +39,11 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import com.example.uthdocument.ui.util.normalizedForSearch
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -79,6 +83,8 @@ fun HomeScreen(
     val bookmarkedIds = bookmarkViewModel.bookmarkedIds.collectAsState().value
 
     var selectedCategoryFilter by remember { mutableStateOf<Category?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
+    val searchKey = remember(searchQuery) { searchQuery.trim().normalizedForSearch() }
 
     if (recent == null || latest == null) {
         Box(
@@ -92,9 +98,22 @@ fun HomeScreen(
         return
     }
 
-    val filteredLatest = remember(latest, selectedCategoryFilter) {
-        if (selectedCategoryFilter == null) latest
-        else latest.filter { it.category == selectedCategoryFilter }
+    val filteredLatest = remember(latest, selectedCategoryFilter, searchKey) {
+        latest.filter { doc ->
+            val matchesCategory = selectedCategoryFilter == null || doc.category == selectedCategoryFilter
+            val matchesSearch = searchKey.isEmpty() ||
+                    doc.title.normalizedForSearch().contains(searchKey) ||
+                    doc.category.displayName.normalizedForSearch().contains(searchKey)
+            matchesCategory && matchesSearch
+        }
+    }
+
+    val filteredRecent = remember(recent, searchKey) {
+        if (searchKey.isEmpty()) recent
+        else recent.filter { doc ->
+            doc.title.normalizedForSearch().contains(searchKey) ||
+                    doc.category.displayName.normalizedForSearch().contains(searchKey)
+        }
     }
 
     LazyColumn(
@@ -106,7 +125,11 @@ fun HomeScreen(
     ) {
         // 1. Header Banner UTH
         item {
-            HomeHeaderBanner(onNavigateToChat = onNavigateToChat)
+            HomeHeaderBanner(
+                searchQuery = searchQuery,
+                onSearchQueryChange = { searchQuery = it },
+                onNavigateToChat = onNavigateToChat
+            )
         }
 
         // 2. Danh mục Nhanh (Filter Chips)
@@ -184,7 +207,7 @@ fun HomeScreen(
                         shape = CircleShape
                     ) {
                         Text(
-                            text = "${recent.size}",
+                            text = "${filteredRecent.size}",
                             color = UthTeal,
                             fontSize = 12.sp,
                             fontWeight = FontWeight.Bold,
@@ -195,7 +218,7 @@ fun HomeScreen(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                if (recent.isEmpty()) {
+                if (filteredRecent.isEmpty()) {
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -204,7 +227,7 @@ fun HomeScreen(
                         colors = CardDefaults.cardColors(containerColor = Color.White)
                     ) {
                         Text(
-                            text = "Bạn chưa có tài liệu nào đang đọc dở. Hãy bắt đầu học ngay nhé!",
+                            text = if (searchQuery.isNotBlank()) "Không có tài liệu đọc dở phù hợp." else "Bạn chưa có tài liệu nào đang đọc dở. Hãy bắt đầu học ngay nhé!",
                             color = Color.Gray,
                             fontSize = 13.sp,
                             modifier = Modifier.padding(16.dp)
@@ -215,7 +238,7 @@ fun HomeScreen(
                         contentPadding = PaddingValues(horizontal = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(recent, key = { "recent_${it.id}" }) { doc ->
+                        items(filteredRecent, key = { "recent_${it.id}" }) { doc ->
                             InProgessDocumentCard(
                                 document = doc,
                                 isBookmarked = doc.id in bookmarkedIds,
@@ -228,7 +251,7 @@ fun HomeScreen(
             }
         }
 
-        // 4. Mục "Tài liệu mới nhất" (Danh sách Dọc)
+        // 4. Mục "Tài liệu mới nhất" / "Kết quả tìm kiếm" (Danh sách Dọc)
         item {
             Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                 Row(
@@ -242,7 +265,11 @@ fun HomeScreen(
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Text(
-                        text = if (selectedCategoryFilter == null) "Tài liệu mới nhất" else "Kho tài liệu ${selectedCategoryFilter?.displayName}",
+                        text = when {
+                            searchQuery.isNotBlank() -> "Kết quả tìm kiếm \"${searchQuery.trim()}\""
+                            selectedCategoryFilter != null -> "Kho tài liệu ${selectedCategoryFilter?.displayName}"
+                            else -> "Tài liệu mới nhất"
+                        },
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = UthNavy
@@ -261,7 +288,11 @@ fun HomeScreen(
                     colors = CardDefaults.cardColors(containerColor = Color.White)
                 ) {
                     Text(
-                        text = "Không tìm thấy tài liệu trong danh mục này.",
+                        text = when {
+                            searchQuery.isNotBlank() -> "Không tìm thấy tài liệu nào phù hợp với \"${searchQuery.trim()}\"."
+                            selectedCategoryFilter != null -> "Không tìm thấy tài liệu trong danh mục này."
+                            else -> "Chưa có tài liệu nào."
+                        },
                         color = Color.Gray,
                         fontSize = 13.sp,
                         modifier = Modifier.padding(16.dp)
@@ -285,6 +316,8 @@ fun HomeScreen(
 
 @Composable
 private fun HomeHeaderBanner(
+    searchQuery: String = "",
+    onSearchQueryChange: (String) -> Unit = {},
     onNavigateToChat: () -> Unit = {}
 ) {
     Box(
@@ -351,30 +384,46 @@ private fun HomeHeaderBanner(
 
             Spacer(modifier = Modifier.height(18.dp))
 
-            // Search Banner Mockup
-            Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = Color.White,
-                shadowElevation = 4.dp,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "Tìm kiếm",
-                        tint = Color.Gray
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
+            // Search Input Field
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = onSearchQueryChange,
+                placeholder = {
                     Text(
                         text = "Tìm kiếm bài giảng, đề thi, giáo trình UTH...",
                         fontSize = 13.sp,
                         color = Color.Gray
                     )
-                }
-            }
+                },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Tìm kiếm",
+                        tint = Color.Gray
+                    )
+                },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { onSearchQueryChange("") }) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Xóa tìm kiếm",
+                                tint = Color.Gray
+                            )
+                        }
+                    }
+                },
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White,
+                    disabledContainerColor = Color.White,
+                    focusedBorderColor = UthTeal,
+                    unfocusedBorderColor = Color.Transparent
+                ),
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }

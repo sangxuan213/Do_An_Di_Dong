@@ -81,31 +81,6 @@ class FirebaseDocumentRepositoryImpl(
     override fun getDocumentsByCourse(courseId: String): Flow<List<Document>> =
         allDocuments.map { docs -> docs.filter { it.courseId.equals(courseId, ignoreCase = true) } }
 
-    override fun getMyDocuments(uid: String): Flow<List<Document>> =
-        allDocuments.map { docs ->
-            val user = auth.currentUser
-            val myUid = user?.uid.orEmpty().ifBlank { uid }
-            val myEmail = user?.email.orEmpty()
-            val myPrefix = if (myEmail.contains('@')) myEmail.substringBefore('@') else myEmail
-
-            docs.filter { doc ->
-                val uploaderId = doc.uploadedBy.trim()
-                val uploaderName = doc.uploaderName.trim()
-
-                (myUid.isNotEmpty() && uploaderId.equals(myUid, ignoreCase = true)) ||
-                (myEmail.isNotEmpty() && uploaderId.equals(myEmail, ignoreCase = true)) ||
-                (myPrefix.isNotEmpty() && uploaderName.equals(myPrefix, ignoreCase = true))
-            }
-        }
-
-    override suspend fun deleteDocument(id: String) {
-        try {
-            db.collection(COLLECTION).document(id).delete().await()
-        } catch (e: Exception) {
-            Log.e(TAG, "Lỗi xóa tài liệu $id: ${e.message}", e)
-        }
-    }
-
     override suspend fun incrementViewCount(id: String) {
         try {
             db.collection(COLLECTION).document(id)
@@ -151,13 +126,6 @@ class FirebaseDocumentRepositoryImpl(
             }
         }
 
-        val currentUser = auth.currentUser
-        val currentUid = currentUser?.uid.orEmpty()
-        val currentEmail = currentUser?.email.orEmpty()
-        val myName = currentUser?.displayName?.takeIf { it.isNotBlank() }
-            ?: currentEmail.substringBefore('@').takeIf { it.isNotBlank() }
-            ?: "Sinh viên UTH"
-
         // Ghi thông tin tài liệu vào Firestore
         val data = hashMapOf<String, Any>(
             "id" to document.id,
@@ -168,8 +136,7 @@ class FirebaseDocumentRepositoryImpl(
             "fileType" to document.type.name,
             "fileSize" to sizeBytes,
             "category" to document.category.name,
-            "uploadedBy" to if (currentUid.isNotBlank()) currentUid else currentEmail,
-            "uploaderName" to myName,
+            "uploadedBy" to auth.currentUser?.uid.orEmpty(),
             "timestamp" to if (document.uploadedAt > 0) document.uploadedAt else System.currentTimeMillis(),
             "faculty" to "",
             "courseCode" to document.courseId.orEmpty(),
@@ -227,13 +194,36 @@ class FirebaseDocumentRepositoryImpl(
                 }
             }
             if (e is FirebaseFirestoreException && e.code == FirebaseFirestoreException.Code.PERMISSION_DENIED) {
-                Log.w(TAG, "Lỗi quyền ghi subcollection chunks. Lưu tài liệu mà không ghép chunks: ${e.message}")
-                return "firestore://$documentId?chunks=0"
+                throw IllegalStateException("Firestore từ chối quyền ghi nội dung tệp. Hãy báo Bạn B thêm rule cho collection con \"chunks\" (documents/{id}/chunks).")
             }
             throw e
         }
         if (count == 0) throw IllegalArgumentException("Tệp rỗng, không có gì để lưu.")
         return "firestore://$documentId?chunks=$count"
+    }
+
+    override fun getDocumentsByUploader(uploaderId: String): Flow<List<Document>> =
+        allDocuments.map { docs -> docs.filter { it.uploaderId == uploaderId } }
+
+    /** Xóa các mảnh nội dung (nếu tệp được lưu trong Firestore) rồi xóa tài liệu. */
+    override suspend fun deleteDocument(id: String) {
+        try {
+            val ref = db.collection(COLLECTION).document(id)
+            // xóa mảnh trước vì rules kiểm tra quyền dựa vào document cha còn tồn tại
+            val chunks = ref.collection("chunks").get().await()
+            for (chunk in chunks.documents) chunk.reference.delete().await()
+            ref.delete().await()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Log.e(TAG, "Xóa tài liệu $id thất bại", e)
+            val denied = e is com.google.firebase.firestore.FirebaseFirestoreException &&
+                e.code == com.google.firebase.firestore.FirebaseFirestoreException.Code.PERMISSION_DENIED
+            throw IllegalStateException(
+                if (denied) "Bạn không có quyền xóa tài liệu này (chỉ người đăng hoặc admin)." else (e.message ?: "Không xóa được tài liệu."),
+                e
+            )
+        }
     }
 
     // ---------- chuyển một document Firestore thành Document của app ----------
@@ -251,7 +241,8 @@ class FirebaseDocumentRepositoryImpl(
             courseId = getString("courseCode")?.trim()?.uppercase()?.takeIf { it.isNotEmpty() },
             uploadedAt = parseTime(get("timestamp")),
             viewCount = (get("viewCount") as? Number)?.toInt() ?: 0,
-            fileUrl = getString("fileUrl")?.takeIf { it.isNotBlank() }
+            fileUrl = getString("fileUrl")?.takeIf { it.isNotBlank() },
+            uploaderId = getString("uploadedBy")?.takeIf { it.isNotBlank() }
         )
     }
 
