@@ -1,7 +1,6 @@
 package com.example.uthdocument.ui.chat
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -116,13 +115,15 @@ fun ChatListScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(rooms, key = { it.id }) { room ->
-                        val recipientUid = room.participants.firstOrNull { it != currentUid }.orEmpty()
-                        val recipientName = room.participantNames[recipientUid].orEmpty().ifBlank { "Sinh viên / Admin UTH" }
+                        val recipientUid = room.participants.firstOrNull { it.isNotBlank() && it != currentUid }
+                            ?: room.id.split("_").firstOrNull { it.isNotBlank() && it != currentUid }.orEmpty()
+                        val recipientName = room.participantNames[recipientUid].orEmpty().ifBlank { "Người dùng UTH" }
+                        val normalizedChatId = ChatViewModel.resolveChatId(room.id, currentUid, recipientUid)
 
                         ChatRoomCard(
                             room = room,
                             recipientName = recipientName,
-                            onClick = { onOpenChat(room.id, recipientUid, recipientName) }
+                            onClick = { onOpenChat(normalizedChatId, recipientUid, recipientName) }
                         )
                     }
                 }

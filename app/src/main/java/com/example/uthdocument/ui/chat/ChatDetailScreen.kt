@@ -33,7 +33,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -79,14 +78,21 @@ fun ChatDetailScreen(
     onBack: () -> Unit,
     viewModel: ChatViewModel = viewModel()
 ) {
-    val targetRecipientUid = remember(recipientUid) {
-        recipientUid.ifBlank { "admin_uth_system" }
+    val myUid = viewModel.currentUid
+    val targetRecipientUid = remember(recipientUid, chatId, myUid) {
+        recipientUid.trim().ifEmpty {
+            chatId.split("_").firstOrNull { it.isNotBlank() && it != myUid }.orEmpty()
+        }
     }
     val targetRecipientName = remember(recipientName) {
-        recipientName.ifBlank { "Giảng viên / Admin UTH" }
+        recipientName.trim().ifEmpty { "Người dùng UTH" }
     }
-    val effectiveChatId = remember(chatId, targetRecipientUid) {
-        if (chatId.isNotBlank()) chatId else ChatViewModel.getChatId(viewModel.currentUid, targetRecipientUid)
+    val effectiveChatId = remember(chatId, myUid, targetRecipientUid) {
+        ChatViewModel.resolveChatId(
+            rawChatId = chatId,
+            myUid = myUid,
+            recipientUid = targetRecipientUid
+        )
     }
 
     val messagesFlow = remember(effectiveChatId) { viewModel.getMessages(effectiveChatId) }
@@ -96,7 +102,6 @@ fun ChatDetailScreen(
     val listState = rememberLazyListState()
     val focusManager = LocalFocusManager.current
 
-    // Cuộn tự động xuống tin nhắn mới nhất
     LaunchedEffect(messages.size) {
         if (messages.isNotEmpty()) {
             listState.animateScrollToItem(messages.size - 1)
@@ -123,7 +128,6 @@ fun ChatDetailScreen(
                                     )
                                 }
                             }
-                            // Chấm xanh lá báo Đang hoạt động kiểu Google Messages
                             Box(
                                 modifier = Modifier
                                     .size(10.dp)
@@ -238,7 +242,6 @@ fun ChatDetailScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                     modifier = Modifier.fillMaxSize()
                 ) {
-                    // Badge thời gian ở trên cùng
                     item {
                         DateBadge(timestamp = messages.firstOrNull()?.timestamp ?: System.currentTimeMillis())
                     }
@@ -246,7 +249,7 @@ fun ChatDetailScreen(
                     itemsIndexed(messages, key = { _, msg -> msg.id.ifBlank { msg.timestamp.toString() } }) { index, msg ->
                         GoogleMessageBubble(
                             message = msg,
-                            isMe = msg.senderId == viewModel.currentUid || (viewModel.currentUid.isEmpty() && msg.senderName.contains("Sinh viên")),
+                            isMe = myUid.isNotEmpty() && msg.senderId == myUid,
                             showName = index == 0 || messages.getOrNull(index - 1)?.senderId != msg.senderId
                         )
                     }

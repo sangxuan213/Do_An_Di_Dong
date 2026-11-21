@@ -11,10 +11,8 @@ import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -31,19 +29,27 @@ class ChatViewModel(
     val currentEmail: String
         get() = auth.currentUser?.email.orEmpty()
 
-    // 1. Danh sách cuộc trò chuyện của người dùng hiện tại
     val chatRooms: StateFlow<List<ChatRoom>> = callbackFlow {
-        if (currentUid.isEmpty()) {
+        val listenerRegistration = FirebaseAuth.AuthStateListener { firebaseAuth ->
+            val uid = firebaseAuth.currentUser?.uid.orEmpty()
+            if (uid.isBlank()) {
+                trySend(emptyList())
+            }
+        }
+        auth.addAuthStateListener(listenerRegistration)
+
+        val uid = currentUid
+        if (uid.isBlank()) {
             trySend(emptyList())
-            close()
+            awaitClose { auth.removeAuthStateListener(listenerRegistration) }
             return@callbackFlow
         }
 
-        val listener = firestore.collection("chats")
-            .whereArrayContains("participants", currentUid)
+        val chatListener = firestore.collection("chats")
+            .whereArrayContains("participants", uid)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
-                    Log.e("ChatViewModel", "Lỗi lấy danh sách chat: ${error.message}")
+                    Log.e("ChatViewModel", "Lỗi lấy danh sách chat: ${error.message}", error)
                     trySend(emptyList())
                     return@addSnapshotListener
                 }
@@ -54,33 +60,40 @@ class ChatViewModel(
                     val names = doc.get("participantNames") as? Map<*, *>
                     ChatRoom(
                         id = doc.id,
-                        participants = participants?.mapNotNull { it.toString() }.orEmpty(),
+                        participants = participants?.mapNotNull { it?.toString() }.orEmpty(),
                         lastMessage = doc.getString("lastMessage").orEmpty(),
                         lastMessageTimestamp = doc.getLong("lastMessageTimestamp") ?: 0L,
-                        participantNames = names?.entries?.associate { it.key.toString() to it.value.toString() }.orEmpty()
+                        participantNames = names?.entries
+                            ?.associate { it.key.toString() to it.value.toString() }
+                            .orEmpty()
                     )
                 }.sortedByDescending { it.lastMessageTimestamp }
 
                 trySend(rooms)
             }
 
-        awaitClose { listener.remove() }
+        awaitClose {
+            chatListener.remove()
+            auth.removeAuthStateListener(listenerRegistration)
+        }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    // 2. Lấy tin nhắn theo chatId (realtime)
     fun getMessages(chatId: String): Flow<List<ChatMessage>> = callbackFlow {
-        if (chatId.isEmpty()) {
+        val cleanChatId = chatId.trim()
+        if (cleanChatId.isEmpty()) {
+            Log.w("ChatViewModel", "getMessages: chatId rỗng")
             trySend(emptyList())
             close()
             return@callbackFlow
         }
 
         val listener = firestore.collection("chats")
-            .document(chatId)
+            .document(cleanChatId)
             .collection("messages")
             .orderBy("timestamp", Query.Direction.ASCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
+                    Log.e("ChatViewModel", "Lỗi đọc tin nhắn phòng $cleanChatId:${error.message}", error)
                     trySend(emptyList())
                     return@addSnapshotListener
                 }
@@ -101,19 +114,41 @@ class ChatViewModel(
         awaitClose { listener.remove() }
     }
 
-    // 3. Gửi tin nhắn 1-1
     fun sendMessage(chatId: String, recipientUid: String, recipientName: String, text: String) {
         val messageText = text.trim()
         if (messageText.isEmpty()) return
 
-        val myUid = currentUid.ifBlank { "anonymous_user" }
-        val targetRecipientUid = recipientUid.ifBlank { "admin_uth_system" }
-        val targetChatId = if (chatId.isNotBlank()) chatId else getChatId(myUid, targetRecipientUid)
-        val myName = currentEmail.substringBefore('@').ifBlank { "Sinh viên UTH" }
-        val targetRecipientName = recipientName.ifBlank { "Giảng viên / Admin UTH" }
+        val myUid = currentUid.trim()
+        if (myUid.isEmpty()) {
+            Log.e("ChatViewModel", "Không gửi được tin nhắn: người dùng chưa đăng nhập")
+            return
+        }
+
+        val cleanRecipientUid = recipientUid.trim()
+        val targetChatId = resolveChatId(
+            rawChatId = chatId,
+            myUid = myUid,
+            recipientUid = cleanRecipientUid
+        )
+        val effectiveRecipientUid = cleanRecipientUid.ifEmpty {
+            targetChatId.split("_").firstOrNull { it.isNotBlank() && it != myUid }.orEmpty()
+        }
+
+        if (effectiveRecipientUid.isEmpty()) {
+            Log.e("ChatViewModel", "Không gửi được tin nhắn: thiếu recipientUid")
+            return
+        }
+
+        val targetRecipientName = recipientName.trim().ifEmpty { "Người dùng UTH" }
 
         viewModelScope.launch {
             try {
+                val userDoc = firestore.collection("users").document(myUid).get().await()
+                val profileName = userDoc.getString("fullName").orEmpty().trim()
+                val myName = profileName.ifEmpty {
+                    currentEmail.substringBefore('@').trim().ifEmpty { "Sinh viên UTH" }
+                }
+
                 val timestamp = System.currentTimeMillis()
                 val msgData = hashMapOf(
                     "senderId" to myUid,
@@ -122,29 +157,28 @@ class ChatViewModel(
                     "timestamp" to timestamp
                 )
 
-                // 1. Thêm tin nhắn vào subcollection messages
                 firestore.collection("chats")
                     .document(targetChatId)
                     .collection("messages")
                     .add(msgData)
                     .await()
 
-                // 2. Cập nhật thông tin phòng chat
                 val roomData = hashMapOf(
-                    "participants" to listOf(myUid, targetRecipientUid),
+                    "participants" to listOf(myUid, effectiveRecipientUid).distinct().sorted(),
                     "lastMessage" to messageText,
                     "lastMessageTimestamp" to timestamp,
                     "participantNames" to mapOf(
                         myUid to myName,
-                        targetRecipientUid to targetRecipientName
+                        effectiveRecipientUid to targetRecipientName
                     )
                 )
+
                 firestore.collection("chats")
                     .document(targetChatId)
                     .set(roomData, SetOptions.merge())
                     .await()
 
-                Log.d("ChatViewModel", "Gửi tin nhắn thành công tới $targetChatId")
+                Log.d("ChatViewModel", "Gửi tin nhắn thành công tới phòng $targetChatId")
             } catch (e: Exception) {
                 Log.e("ChatViewModel", "Lỗi gửi tin nhắn: ${e.message}", e)
             }
@@ -153,7 +187,25 @@ class ChatViewModel(
 
     companion object {
         fun getChatId(uid1: String, uid2: String): String {
-            return if (uid1 < uid2) "${uid1}_${uid2}" else "${uid2}_${uid1}"
+            val clean1 = uid1.trim()
+            val clean2 = uid2.trim()
+            return listOf(clean1, clean2)
+                .filter { it.isNotEmpty() }
+                .distinct()
+                .sorted()
+                .joinToString("_")
+        }
+
+        fun resolveChatId(rawChatId: String, myUid: String, recipientUid: String): String {
+            val cleanRoomId = rawChatId.trim()
+            if (cleanRoomId.isNotEmpty()) {
+                val parts = cleanRoomId.split("_").filter { it.isNotBlank() }.distinct().sorted()
+                if (parts.size == 2) {
+                    return parts.joinToString("_")
+                }
+                return cleanRoomId
+            }
+            return getChatId(myUid, recipientUid)
         }
     }
 }

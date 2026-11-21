@@ -1,8 +1,7 @@
 package com.example.uthdocument.ui.detail
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -36,24 +35,22 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import com.example.uthdocument.data.AppConfig
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.uthdocument.data.AppConfig
 import com.example.uthdocument.domain.model.Document
-import com.example.uthdocument.ui.bookmark.BookmarkViewModel
 import com.example.uthdocument.domain.model.DocumentType
+import com.example.uthdocument.ui.bookmark.BookmarkViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -72,7 +69,8 @@ fun DocumentDetailScreen(
         viewModel.load(documentId)
         interactionViewModel.load(documentId)
     }
-    val state = viewModel.uiState.collectAsState().value
+    val state by viewModel.uiState.collectAsState()
+    val uploaderInfo by viewModel.uploaderInfo.collectAsState()
     val isBookmarked = documentId in bookmarkViewModel.bookmarkedIds.collectAsState().value
 
     Scaffold(
@@ -108,7 +106,7 @@ fun DocumentDetailScreen(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            when (state) {
+            when (val currentState = state) {
                 DetailUiState.Loading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
                 DetailUiState.NotFound -> Text(
                     text = "Không tìm thấy tài liệu.",
@@ -116,7 +114,8 @@ fun DocumentDetailScreen(
                     modifier = Modifier.align(Alignment.Center)
                 )
                 is DetailUiState.Success -> DocumentContent(
-                    document = state.document,
+                    document = currentState.document,
+                    uploaderInfo = uploaderInfo,
                     interactionViewModel = interactionViewModel,
                     onOpenChat = onOpenChat
                 )
@@ -128,18 +127,30 @@ fun DocumentDetailScreen(
 @Composable
 private fun DocumentContent(
     document: Document,
+    uploaderInfo: UploaderInfo?,
     interactionViewModel: DocumentInteractionViewModel,
     onOpenChat: (recipientUid: String, recipientName: String) -> Unit
 ) {
-    val stats = interactionViewModel.stats.collectAsState().value
-    val comments = interactionViewModel.comments.collectAsState().value
+    val stats by interactionViewModel.stats.collectAsState()
+    val comments by interactionViewModel.comments.collectAsState()
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+
+    val resolvedUploaderUid = document.uploadedBy.trim().ifEmpty { uploaderInfo?.uid.orEmpty() }
+    val resolvedUploaderName = listOf(
+        document.uploaderName.trim(),
+        uploaderInfo?.fullName.orEmpty(),
+        uploaderInfo?.email?.substringBefore('@').orEmpty()
+    ).firstOrNull { it.isNotEmpty() } ?: "Giảng viên / Admin UTH"
+
+    val uploaderMeta = listOfNotNull(
+        uploaderInfo?.faculty?.takeIf { it.isNotBlank() },
+        uploaderInfo?.email?.takeIf { it.isNotBlank() }
+    ).joinToString(" • ")
 
     Column(modifier = Modifier.fillMaxSize()) {
         Card(
             onClick = {
-                val name = document.uploaderName.ifBlank { "Giảng viên / Admin UTH" }
-                onOpenChat(document.uploadedBy, name)
+                onOpenChat(resolvedUploaderUid, resolvedUploaderName)
             },
             modifier = Modifier
                 .fillMaxWidth()
@@ -175,11 +186,22 @@ private fun DocumentContent(
                         color = Color.Gray
                     )
                     Text(
-                        text = document.uploaderName.ifBlank { "Giảng viên / Admin UTH" },
+                        text = resolvedUploaderName,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color(0xFF002D58)
+                        color = Color(0xFF002D58),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
+                    if (uploaderMeta.isNotEmpty()) {
+                        Text(
+                            text = uploaderMeta,
+                            fontSize = 11.sp,
+                            color = Color.Gray,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
 
                 Surface(
@@ -249,27 +271,20 @@ private fun DocumentContent(
             when (document.type) {
                 DocumentType.PDF -> {
                     if (document.filePath != null) {
-                        // Tài liệu người dùng tự thêm: mở đúng tệp đã chọn
                         PdfViewer(file = File(document.filePath), modifier = contentModifier, documentId = document.id)
                     } else if (document.fileUrl != null) {
-                        // Tài liệu trên Firebase: tải về máy (chỉ tải một lần) rồi xem
                         RemotePdfViewer(document = document, modifier = contentModifier)
                     } else {
                         SamplePdfViewer(documentId = document.id, modifier = contentModifier)
                     }
                 }
 
-                // Word / PowerPoint: xem phần chữ trong app, đầy đủ thì mở bằng ứng dụng khác
                 else -> OfficeDocumentViewer(document = document, modifier = contentModifier)
             }
         }
     }
 }
 
-/**
- * TẠM THỜI: chép assets/sample.pdf ra cache rồi hiển thị.
- * TODO (phối hợp Bạn B): thay bằng tệp tải từ Firebase Storage về cacheDir -> truyền File đó vào PdfViewer.
- */
 @Composable
 private fun SamplePdfViewer(documentId: String, modifier: Modifier = Modifier) {
     val context = LocalContext.current
@@ -279,10 +294,8 @@ private fun SamplePdfViewer(documentId: String, modifier: Modifier = Modifier) {
     LaunchedEffect(Unit) {
         runCatching {
             withContext(Dispatchers.IO) {
-                // 1) tệp đã có sẵn trên máy này (do chính mình đăng tải lên)
                 val local = File(File(context.filesDir, "documents"), "$documentId.pdf")
                 if (local.exists() && local.length() > 0) return@withContext local
-                // 2) tệp mẫu chỉ dùng khi chạy dữ liệu giả, tài liệu thật chưa có tệp thì báo rõ
                 if (!AppConfig.USE_FAKE_DOCUMENTS) throw IllegalStateException("Tài liệu chưa có tệp")
                 val out = File(context.cacheDir, "sample.pdf")
                 context.assets.open("sample.pdf").use { input ->

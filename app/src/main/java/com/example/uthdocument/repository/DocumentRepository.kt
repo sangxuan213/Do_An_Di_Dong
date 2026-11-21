@@ -1,16 +1,18 @@
 package com.example.uthdocument.repository
 
 import android.net.Uri
+import com.example.uthdocument.model.DocumentItem
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.Query
 import com.google.firebase.storage.FirebaseStorage
-import com.example.uthdocument.model.DocumentItem
 import kotlinx.coroutines.tasks.await
 import java.util.UUID
 
 class DocumentRepository(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance(),
-    private val storage: FirebaseStorage = FirebaseStorage.getInstance()
+    private val storage: FirebaseStorage = FirebaseStorage.getInstance(),
+    private val auth: FirebaseAuth = FirebaseAuth.getInstance()
 ) {
     suspend fun getDocumentsByFaculty(faculty: String): List<DocumentItem> {
         val query = if (faculty.isBlank()) {
@@ -44,10 +46,12 @@ class DocumentRepository(
             val storageRef = storage.reference.child("study_materials/${document.faculty}/$fileId")
             storageRef.putFile(fileUri).await()
             val downloadUrl = storageRef.downloadUrl.await().toString()
+            val currentUid = auth.currentUser?.uid.orEmpty()
 
             val newDoc = document.copy(
                 id = fileId,
                 fileUrl = downloadUrl,
+                uploadedBy = document.uploadedBy.ifBlank { currentUid },
                 qrCodeHash = "UTH_DOC_$fileId"
             )
             db.collection("documents").document(fileId).set(newDoc).await()
