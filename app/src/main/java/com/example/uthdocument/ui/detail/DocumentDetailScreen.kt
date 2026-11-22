@@ -1,14 +1,22 @@
 package com.example.uthdocument.ui.detail
 
+import com.example.uthdocument.ui.downloads.rememberDocumentExporter
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material3.CircularProgressIndicator
@@ -30,14 +38,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import com.example.uthdocument.data.AppConfig
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uthdocument.domain.model.Document
+import com.example.uthdocument.ui.social.UploaderRow
 import com.example.uthdocument.ui.bookmark.BookmarkViewModel
 import com.example.uthdocument.domain.model.DocumentType
 import kotlinx.coroutines.Dispatchers
@@ -49,6 +61,7 @@ import java.io.File
 fun DocumentDetailScreen(
     documentId: String,
     onBack: () -> Unit,
+    onUploaderClick: (String) -> Unit = {},
     viewModel: DocumentDetailViewModel = viewModel(),
     bookmarkViewModel: BookmarkViewModel = viewModel(),
     interactionViewModel: DocumentInteractionViewModel = viewModel()
@@ -58,6 +71,7 @@ fun DocumentDetailScreen(
         interactionViewModel.load(documentId)
     }
     val state = viewModel.uiState.collectAsState().value
+    val exporter = rememberDocumentExporter()
     val isBookmarked = documentId in bookmarkViewModel.bookmarkedIds.collectAsState().value
 
     Scaffold(
@@ -77,6 +91,15 @@ fun DocumentDetailScreen(
                 },
                 actions = {
                     if (state is DetailUiState.Success) {
+                        // Tải về máy: lưu một bản vào thư mục Tải xuống để mở bằng ứng dụng khác hoặc chia sẻ
+                        val working = exporter.workingId == documentId
+                        IconButton(onClick = { exporter.export(state.document) }, enabled = !working) {
+                            if (working) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                            } else {
+                                Icon(Icons.Default.Download, contentDescription = "Tải về máy")
+                            }
+                        }
                         IconButton(onClick = { bookmarkViewModel.toggle(documentId) }) {
                             Icon(
                                 imageVector = if (isBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
@@ -100,7 +123,7 @@ fun DocumentDetailScreen(
                     color = Color.Gray,
                     modifier = Modifier.align(Alignment.Center)
                 )
-                is DetailUiState.Success -> DocumentContent(state.document, interactionViewModel)
+                is DetailUiState.Success -> DocumentContent(state.document, interactionViewModel, onUploaderClick)
             }
         }
     }
@@ -109,18 +132,22 @@ fun DocumentDetailScreen(
 @Composable
 private fun DocumentContent(
     document: Document,
-    interactionViewModel: DocumentInteractionViewModel
+    interactionViewModel: DocumentInteractionViewModel,
+    onUploaderClick: (String) -> Unit
 ) {
     val stats = interactionViewModel.stats.collectAsState().value
     val comments = interactionViewModel.comments.collectAsState().value
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
 
     Column(modifier = Modifier.fillMaxSize()) {
+        // Người đăng thật (bấm vào để xem trang cá nhân và nhắn tin)
+        UploaderRow(uploaderId = document.uploaderId, onClick = onUploaderClick)
+
         Text(
             text = "${document.type.extension} • ${"%.1f".format(document.sizeInMb)} MB • ${document.category.displayName}",
             fontSize = 12.sp,
             color = Color.Gray,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
         )
 
         DocumentActionBar(stats = stats, onToggleLike = interactionViewModel::toggleLike)
@@ -158,20 +185,17 @@ private fun DocumentContent(
                 DocumentType.PDF -> {
                     if (document.filePath != null) {
                         // Tài liệu người dùng tự thêm: mở đúng tệp đã chọn
-                        PdfViewer(file = File(document.filePath), modifier = contentModifier)
+                        PdfViewer(file = File(document.filePath), modifier = contentModifier, documentId = document.id)
+                    } else if (document.fileUrl != null) {
+                        // Tài liệu trên Firebase: tải về máy (chỉ tải một lần) rồi xem
+                        RemotePdfViewer(document = document, modifier = contentModifier)
                     } else {
-                        SamplePdfViewer(modifier = contentModifier)
+                        SamplePdfViewer(documentId = document.id, modifier = contentModifier)
                     }
                 }
 
-                else -> Box(modifier = contentModifier, contentAlignment = Alignment.Center) {
-                    Text(
-                        text = "Chưa hỗ trợ xem trực tiếp định dạng ${document.type.extension}.",
-                        color = Color.Gray,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(24.dp)
-                    )
-                }
+                // Word / PowerPoint: xem phần chữ trong app, đầy đủ thì mở bằng ứng dụng khác
+                else -> OfficeDocumentViewer(document = document, modifier = contentModifier)
             }
         }
     }
@@ -182,7 +206,7 @@ private fun DocumentContent(
  * TODO (phối hợp Bạn B): thay bằng tệp tải từ Firebase Storage về cacheDir -> truyền File đó vào PdfViewer.
  */
 @Composable
-private fun SamplePdfViewer(modifier: Modifier = Modifier) {
+private fun SamplePdfViewer(documentId: String, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     var file by remember { mutableStateOf<File?>(null) }
     var failed by remember { mutableStateOf(false) }
@@ -190,6 +214,11 @@ private fun SamplePdfViewer(modifier: Modifier = Modifier) {
     LaunchedEffect(Unit) {
         runCatching {
             withContext(Dispatchers.IO) {
+                // 1) tệp đã có sẵn trên máy này (do chính mình đăng tải lên)
+                val local = File(File(context.filesDir, "documents"), "$documentId.pdf")
+                if (local.exists() && local.length() > 0) return@withContext local
+                // 2) tệp mẫu chỉ dùng khi chạy dữ liệu giả, tài liệu thật chưa có tệp thì báo rõ
+                if (!AppConfig.USE_FAKE_DOCUMENTS) throw IllegalStateException("Tài liệu chưa có tệp")
                 val out = File(context.cacheDir, "sample.pdf")
                 context.assets.open("sample.pdf").use { input ->
                     out.outputStream().use { output -> input.copyTo(output) }
@@ -202,9 +231,9 @@ private fun SamplePdfViewer(modifier: Modifier = Modifier) {
 
     val current = file
     when {
-        current != null -> PdfViewer(file = current, modifier = modifier)
+        current != null -> PdfViewer(file = current, modifier = modifier, documentId = documentId)
         failed -> Box(modifier = modifier, contentAlignment = Alignment.Center) {
-            Text(text = "Không tải được tệp PDF.", color = Color.Gray)
+            Text(text = "Tài liệu này chưa có tệp đính kèm.", color = Color.Gray)
         }
         else -> Box(modifier = modifier, contentAlignment = Alignment.Center) {
             CircularProgressIndicator()

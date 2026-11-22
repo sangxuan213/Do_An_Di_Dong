@@ -1,5 +1,6 @@
 package com.example.uthdocument.ui.profile
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -26,10 +27,12 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,17 +43,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uthdocument.domain.model.UserProfile
+import com.example.uthdocument.domain.model.UserRole
 import com.example.uthdocument.ui.bookmark.BookmarkViewModel
+import com.example.uthdocument.ui.social.SocialShortcuts
 import com.example.uthdocument.ui.theme.UthBlue
 
 @Composable
 fun ProfileScreen(
     onLogout: () -> Unit = {},
+    onNavigateToAdmin: () -> Unit = {},
+    onNavigateToMyDocuments: () -> Unit = {},
+    onNavigateToMessages: () -> Unit = {},
+    onNavigateToDownloads: () -> Unit = {},
     viewModel: ProfileViewModel = viewModel(),
     bookmarkViewModel: BookmarkViewModel = viewModel()
 ) {
@@ -66,6 +77,7 @@ fun ProfileScreen(
 
     var notificationsOn by rememberSaveable { mutableStateOf(true) }
     var showLogoutDialog by remember { mutableStateOf(false) }
+    var showPasswordDialog by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -79,14 +91,22 @@ fun ProfileScreen(
         Spacer(modifier = Modifier.height(24.dp))
 
         SectionCard {
-            InfoRow("Mã số", profile.studentId)
+            InfoRow("Mã số", profile.studentId.ifBlank { "Chưa cập nhật" })
             HorizontalDivider()
-            InfoRow("Khoa", profile.faculty)
+            InfoRow("Khoa", profile.faculty.ifBlank { "Chưa cập nhật" })
             HorizontalDivider()
-            InfoRow("Lớp", profile.className)
+            InfoRow("Lớp", profile.className.ifBlank { "Chưa cập nhật" })
             HorizontalDivider()
             InfoRow("Tài liệu đã lưu", "$bookmarkCount")
         }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        SocialShortcuts(
+            onMyDocuments = onNavigateToMyDocuments,
+            onDownloads = onNavigateToDownloads,
+            onMessages = onNavigateToMessages
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -105,12 +125,30 @@ fun ProfileScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable { /* TODO: màn hình Đổi mật khẩu (Firebase Auth) */ }
+                    .clickable { showPasswordDialog = true }
                     .padding(horizontal = 16.dp, vertical = 14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(text = "Đổi mật khẩu", modifier = Modifier.weight(1f))
                 Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Color.Gray)
+            }
+            if (profile.role == UserRole.ADMIN) {
+                HorizontalDivider()
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onNavigateToAdmin() }
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "🛠️ Trang quản trị Admin",
+                        fontWeight = FontWeight.SemiBold,
+                        color = UthBlue,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = UthBlue)
+                }
             }
             HorizontalDivider()
             InfoRow("Phiên bản", "1.0")
@@ -126,6 +164,17 @@ fun ProfileScreen(
         }
     }
 
+    if (showPasswordDialog) {
+        ChangePasswordDialog(
+            state = viewModel.passwordState.collectAsState().value,
+            onConfirm = viewModel::changePassword,
+            onDismiss = {
+                showPasswordDialog = false
+                viewModel.resetPasswordState()
+            }
+        )
+    }
+
     if (showLogoutDialog) {
         AlertDialog(
             onDismissRequest = { showLogoutDialog = false },
@@ -134,7 +183,8 @@ fun ProfileScreen(
             confirmButton = {
                 TextButton(onClick = {
                     showLogoutDialog = false
-                    onLogout() // TODO (phối hợp Bạn B): gọi FirebaseAuth.signOut() trước khi quay về đăng nhập
+                    viewModel.logout()
+                    onLogout()
                 }) { Text("Đăng xuất") }
             },
             dismissButton = {
@@ -196,4 +246,71 @@ private fun InfoRow(label: String, value: String) {
         Text(text = label, color = Color.Gray, modifier = Modifier.weight(1f))
         Text(text = value, fontWeight = FontWeight.Medium)
     }
+}
+
+@Composable
+private fun ChangePasswordDialog(
+    state: PasswordChangeUiState,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val context = LocalContext.current
+    var newPassword by remember { mutableStateOf("") }
+    var confirmPassword by remember { mutableStateOf("") }
+    var localError by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(state.success) {
+        if (state.success) {
+            Toast.makeText(context, "Đã đổi mật khẩu", Toast.LENGTH_SHORT).show()
+            onDismiss()
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = { if (!state.isLoading) onDismiss() },
+        title = { Text("Đổi mật khẩu") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = newPassword,
+                    onValueChange = { newPassword = it; localError = null },
+                    label = { Text("Mật khẩu mới") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = confirmPassword,
+                    onValueChange = { confirmPassword = it; localError = null },
+                    label = { Text("Nhập lại mật khẩu mới") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                val error = localError ?: state.error
+                if (error != null) {
+                    Text(text = error, color = MaterialTheme.colorScheme.error, fontSize = 13.sp)
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                enabled = !state.isLoading,
+                onClick = {
+                    when {
+                        newPassword.length < 6 -> localError = "Mật khẩu phải có ít nhất 6 ký tự."
+                        newPassword != confirmPassword -> localError = "Hai mật khẩu không khớp."
+                        else -> onConfirm(newPassword)
+                    }
+                }
+            ) {
+                if (state.isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                } else {
+                    Text("Đổi")
+                }
+            }
+        },
+        dismissButton = { TextButton(onClick = onDismiss, enabled = !state.isLoading) { Text("Hủy") } }
+    )
 }

@@ -22,6 +22,15 @@ interface DocumentRepository {
     // Lấy các tài liệu thuộc một môn học
     fun getDocumentsByCourse(courseId: String): Flow<List<Document>>
 
+    // Các tài liệu do một người đăng (dùng cho "Tài liệu của tôi" và trang cá nhân người đăng)
+    fun getDocumentsByUploader(uploaderId: String): Flow<List<Document>>
+
+    // Xóa một tài liệu (chỉ người đăng hoặc admin xóa được, do Firestore rules kiểm soát)
+    suspend fun deleteDocument(id: String)
+
+    // Tăng lượt xem của tài liệu lên 1
+    suspend fun incrementViewCount(id: String)
+
     // Thêm một tài liệu mới
     suspend fun addDocument(document: Document)
 }

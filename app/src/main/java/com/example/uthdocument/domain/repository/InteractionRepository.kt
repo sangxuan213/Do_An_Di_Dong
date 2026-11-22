@@ -7,6 +7,9 @@ import kotlinx.coroutines.flow.Flow
 interface InteractionRepository {
     fun getStats(documentId: String): Flow<DocumentStats>
 
+    // Số liệu của mọi tài liệu (để sắp xếp theo đánh giá)
+    fun getAllStats(): Flow<Map<String, DocumentStats>>
+
     // Bình luận mới nhất đứng đầu
     fun getComments(documentId: String): Flow<List<Comment>>
 
