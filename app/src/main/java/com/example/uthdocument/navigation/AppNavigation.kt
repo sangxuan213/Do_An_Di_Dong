@@ -13,6 +13,7 @@ import com.example.uthdocument.ui.add.AddDocumentScreen
 import com.example.uthdocument.ui.admin.AdminScreen
 import com.example.uthdocument.ui.chat.ChatScreen
 import com.example.uthdocument.ui.chat.ConversationsScreen
+import com.example.uthdocument.ui.downloads.DownloadsScreen
 import com.example.uthdocument.ui.courses.CourseDetailScreen
 import com.example.uthdocument.ui.detail.DocumentDetailScreen
 import com.example.uthdocument.ui.login.LoginScreen
@@ -32,6 +33,7 @@ object Routes {
     const val USER = "user/{uid}"
     const val MY_DOCUMENTS = "my_documents"
     const val CHATS = "chats"
+    const val DOWNLOADS = "downloads"
     const val CHAT = "chat/{chatId}"
 
     fun document(id: String) = "document/$id"
@@ -83,6 +85,7 @@ fun AppNavigation(navController: NavHostController = rememberNavController()) {
                 onNavigateToAdmin = { navController.navigate(Routes.ADMIN) },
                 onNavigateToMyDocuments = { navController.navigate(Routes.MY_DOCUMENTS) },
                 onNavigateToMessages = { navController.navigate(Routes.CHATS) },
+                onNavigateToDownloads = { navController.navigate(Routes.DOWNLOADS) },
                 onLogout = {
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(Routes.MAIN) { inclusive = true }
@@ -122,6 +125,14 @@ fun AppNavigation(navController: NavHostController = rememberNavController()) {
                 onBack = { navController.popBackStack() },
                 onDocumentClick = { id -> navController.navigate(Routes.document(id)) },
                 onAddDocument = { navController.navigate(Routes.ADD_DOCUMENT) }
+            )
+        }
+
+        // Tài liệu đã tải về máy
+        composable(Routes.DOWNLOADS) {
+            DownloadsScreen(
+                onBack = { navController.popBackStack() },
+                onDocumentClick = { id -> navController.navigate(Routes.document(id)) }
             )
         }
 

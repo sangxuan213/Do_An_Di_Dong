@@ -61,6 +61,7 @@ fun ProfileScreen(
     onNavigateToAdmin: () -> Unit = {},
     onNavigateToMyDocuments: () -> Unit = {},
     onNavigateToMessages: () -> Unit = {},
+    onNavigateToDownloads: () -> Unit = {},
     viewModel: ProfileViewModel = viewModel(),
     bookmarkViewModel: BookmarkViewModel = viewModel()
 ) {
@@ -101,7 +102,11 @@ fun ProfileScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        SocialShortcuts(onMyDocuments = onNavigateToMyDocuments, onMessages = onNavigateToMessages)
+        SocialShortcuts(
+            onMyDocuments = onNavigateToMyDocuments,
+            onDownloads = onNavigateToDownloads,
+            onMessages = onNavigateToMessages
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 

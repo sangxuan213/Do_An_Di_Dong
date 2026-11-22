@@ -1,5 +1,7 @@
 package com.example.uthdocument.ui.detail
 
+import com.example.uthdocument.ui.downloads.rememberDocumentExporter
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
@@ -69,6 +71,7 @@ fun DocumentDetailScreen(
         interactionViewModel.load(documentId)
     }
     val state = viewModel.uiState.collectAsState().value
+    val exporter = rememberDocumentExporter()
     val isBookmarked = documentId in bookmarkViewModel.bookmarkedIds.collectAsState().value
 
     Scaffold(
@@ -88,6 +91,15 @@ fun DocumentDetailScreen(
                 },
                 actions = {
                     if (state is DetailUiState.Success) {
+                        // Tải về máy: lưu một bản vào thư mục Tải xuống để mở bằng ứng dụng khác hoặc chia sẻ
+                        val working = exporter.workingId == documentId
+                        IconButton(onClick = { exporter.export(state.document) }, enabled = !working) {
+                            if (working) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                            } else {
+                                Icon(Icons.Default.Download, contentDescription = "Tải về máy")
+                            }
+                        }
                         IconButton(onClick = { bookmarkViewModel.toggle(documentId) }) {
                             Icon(
                                 imageVector = if (isBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,

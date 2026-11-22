@@ -28,10 +28,11 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.uthdocument.ui.chat.UnreadMessagesViewModel
 
-/** Hai lối tắt ở màn Cá nhân: "Tài liệu của tôi" và "Tin nhắn" (có huy hiệu số tin chưa đọc). */
+/** Các lối tắt ở màn Cá nhân: tài liệu của tôi, đã tải về, tin nhắn (có huy hiệu số tin chưa đọc). */
 @Composable
 fun SocialShortcuts(
     onMyDocuments: () -> Unit,
+    onDownloads: () -> Unit,
     onMessages: () -> Unit,
     unreadViewModel: UnreadMessagesViewModel = viewModel()
 ) {
@@ -44,6 +45,8 @@ fun SocialShortcuts(
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         ShortcutRow(title = "Tài liệu của tôi", onClick = onMyDocuments)
+        HorizontalDivider()
+        ShortcutRow(title = "Đã tải về", onClick = onDownloads)
         HorizontalDivider()
         ShortcutRow(title = "Tin nhắn", badge = unread, onClick = onMessages)
     }

@@ -11,10 +11,12 @@ import com.example.uthdocument.data.repository.FirebaseDocumentRepositoryImpl
 import com.example.uthdocument.data.repository.FirebaseProfileRepositoryImpl
 import com.example.uthdocument.data.repository.FirebaseSessionRepositoryImpl
 import com.example.uthdocument.data.repository.FirebaseUserRepositoryImpl
+import com.example.uthdocument.data.repository.LocalDownloadsRepository
 import com.example.uthdocument.data.repository.LocalReadingProgressRepository
 import com.example.uthdocument.data.repository.ProgressAwareDocumentRepository
 import com.example.uthdocument.domain.repository.ChatRepository
 import com.example.uthdocument.domain.repository.DocumentRepository
+import com.example.uthdocument.domain.repository.DownloadsRepository
 import com.example.uthdocument.domain.repository.ProfileRepository
 import com.example.uthdocument.domain.repository.ReadingProgressRepository
 import com.example.uthdocument.domain.repository.SessionRepository
@@ -42,10 +44,15 @@ object AppContainer {
         LocalReadingProgressRepository.getInstance(appContext)
     }
 
-    /** Dùng chung một instance để mọi màn hình chia sẻ cùng một listener Firestore và cùng tiến độ đọc. */
+    /** Các tài liệu đã tải về máy (đọc offline). */
+    val downloadsRepository: DownloadsRepository by lazy {
+        LocalDownloadsRepository.getInstance(appContext)
+    }
+
+    /** Dùng chung một instance để mọi màn hình chia sẻ cùng một listener Firestore, tiến độ đọc và trạng thái tải về. */
     val documentRepository: DocumentRepository by lazy {
         val base = if (AppConfig.USE_FAKE_DOCUMENTS) FakeDocumentRepositoryImpl() else FirebaseDocumentRepositoryImpl()
-        ProgressAwareDocumentRepository(base, readingProgressRepository)
+        ProgressAwareDocumentRepository(base, readingProgressRepository, downloadsRepository)
     }
 
     /** Người dùng hiện tại và hồ sơ công khai của người khác (theo cờ USE_FAKE_AUTH). */

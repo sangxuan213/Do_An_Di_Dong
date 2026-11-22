@@ -47,6 +47,7 @@ class DocumentFileRepository(private val context: Context) {
                     partial.delete()
                     throw e
                 }
+                LocalDownloadsRepository.getInstance(context).refresh() // cập nhật danh sách "Đã tải về"
                 Result.success(target)
             } catch (e: CancellationException) {
                 throw e

@@ -54,6 +54,7 @@ fun MainScreen(
     onNavigateToAdmin: () -> Unit = {},
     onNavigateToMyDocuments: () -> Unit = {},
     onNavigateToMessages: () -> Unit = {},
+    onNavigateToDownloads: () -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
     RequestNotificationPermission()
@@ -143,7 +144,8 @@ fun MainScreen(
                     onLogout = onLogout,
                     onNavigateToAdmin = onNavigateToAdmin,
                     onNavigateToMyDocuments = onNavigateToMyDocuments,
-                    onNavigateToMessages = onNavigateToMessages
+                    onNavigateToMessages = onNavigateToMessages,
+                    onNavigateToDownloads = onNavigateToDownloads
                 )
                 BottomNavItem.Empty -> {} // Không làm gì cả, đây là khoảng trống cho FAB
             }
