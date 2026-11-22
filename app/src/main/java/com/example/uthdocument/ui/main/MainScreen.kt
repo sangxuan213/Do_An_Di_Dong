@@ -7,10 +7,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -31,28 +32,40 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.uthdocument.ui.courses.CoursesScreen
 import com.example.uthdocument.ui.home.HomeScreen
 import com.example.uthdocument.ui.library.LibraryScreen
 import com.example.uthdocument.ui.profile.ProfileScreen
-import com.example.uthdocument.ui.schedule.ScheduleScreen
 
 // Định nghĩa các tab
 sealed class BottomNavItem(val title: String, val icon: ImageVector) {
     object Home : BottomNavItem("Trang chủ", Icons.Default.Home)
     object Library : BottomNavItem("Thư viện", Icons.Default.Folder)
     object Empty : BottomNavItem("", Icons.Default.Home) // Khoảng trống cho FAB
-    object Schedule : BottomNavItem("Lịch học", Icons.Default.CalendarMonth)
+    object Courses : BottomNavItem("Môn học", Icons.Default.School)
     object Profile : BottomNavItem("Cá nhân", Icons.Default.Person)
 }
 
 @Composable
-fun MainScreen() {
-    var selectedItem by remember { mutableIntStateOf(0) }
+fun MainScreen(
+    onDocumentClick: (String) -> Unit = {},
+    onAddDocumentClick: () -> Unit = {},
+    onCourseClick: (String) -> Unit = {},
+    onNavigateToAdmin: () -> Unit = {},
+    onNavigateToMyDocuments: () -> Unit = {},
+    onNavigateToMessages: () -> Unit = {},
+    onNavigateToDownloads: () -> Unit = {},
+    onLogout: () -> Unit = {}
+) {
+    RequestNotificationPermission()
+
+    // rememberSaveable: quay lại từ màn chi tiết vẫn ở đúng tab cũ
+    var selectedItem by rememberSaveable { mutableIntStateOf(0) }
     val items = listOf(
         BottomNavItem.Home,
         BottomNavItem.Library,
         BottomNavItem.Empty,
-        BottomNavItem.Schedule,
+        BottomNavItem.Courses,
         BottomNavItem.Profile
     )
 
@@ -106,7 +119,7 @@ fun MainScreen() {
         },
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { /* TODO: Mở màn hình Thêm tài liệu */ },
+                onClick = onAddDocumentClick,
                 shape = CircleShape,
                 containerColor = uthBlue,
                 contentColor = Color.White,
@@ -124,10 +137,16 @@ fun MainScreen() {
                 .padding(innerPadding)
         ) {
             when (items[selectedItem]) {
-                BottomNavItem.Home -> HomeScreen()
-                BottomNavItem.Library -> LibraryScreen()
-                BottomNavItem.Schedule -> ScheduleScreen()
-                BottomNavItem.Profile -> ProfileScreen()
+                BottomNavItem.Home -> HomeScreen(onDocumentClick = onDocumentClick)
+                BottomNavItem.Library -> LibraryScreen(onDocumentClick = onDocumentClick)
+                BottomNavItem.Courses -> CoursesScreen(onCourseClick = onCourseClick)
+                BottomNavItem.Profile -> ProfileScreen(
+                    onLogout = onLogout,
+                    onNavigateToAdmin = onNavigateToAdmin,
+                    onNavigateToMyDocuments = onNavigateToMyDocuments,
+                    onNavigateToMessages = onNavigateToMessages,
+                    onNavigateToDownloads = onNavigateToDownloads
+                )
                 BottomNavItem.Empty -> {} // Không làm gì cả, đây là khoảng trống cho FAB
             }
         }

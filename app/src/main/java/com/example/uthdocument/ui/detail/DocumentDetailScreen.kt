@@ -1,0 +1,242 @@
+package com.example.uthdocument.ui.detail
+
+import com.example.uthdocument.ui.downloads.rememberDocumentExporter
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import com.example.uthdocument.data.AppConfig
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.uthdocument.domain.model.Document
+import com.example.uthdocument.ui.social.UploaderRow
+import com.example.uthdocument.ui.bookmark.BookmarkViewModel
+import com.example.uthdocument.domain.model.DocumentType
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DocumentDetailScreen(
+    documentId: String,
+    onBack: () -> Unit,
+    onUploaderClick: (String) -> Unit = {},
+    viewModel: DocumentDetailViewModel = viewModel(),
+    bookmarkViewModel: BookmarkViewModel = viewModel(),
+    interactionViewModel: DocumentInteractionViewModel = viewModel()
+) {
+    LaunchedEffect(documentId) {
+        viewModel.load(documentId)
+        interactionViewModel.load(documentId)
+    }
+    val state = viewModel.uiState.collectAsState().value
+    val exporter = rememberDocumentExporter()
+    val isBookmarked = documentId in bookmarkViewModel.bookmarkedIds.collectAsState().value
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = (state as? DetailUiState.Success)?.document?.title ?: "Tài liệu",
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Quay lại")
+                    }
+                },
+                actions = {
+                    if (state is DetailUiState.Success) {
+                        // Tải về máy: lưu một bản vào thư mục Tải xuống để mở bằng ứng dụng khác hoặc chia sẻ
+                        val working = exporter.workingId == documentId
+                        IconButton(onClick = { exporter.export(state.document) }, enabled = !working) {
+                            if (working) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                            } else {
+                                Icon(Icons.Default.Download, contentDescription = "Tải về máy")
+                            }
+                        }
+                        IconButton(onClick = { bookmarkViewModel.toggle(documentId) }) {
+                            Icon(
+                                imageVector = if (isBookmarked) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
+                                contentDescription = if (isBookmarked) "Bỏ lưu" else "Lưu tài liệu"
+                            )
+                        }
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            when (state) {
+                DetailUiState.Loading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
+                DetailUiState.NotFound -> Text(
+                    text = "Không tìm thấy tài liệu.",
+                    color = Color.Gray,
+                    modifier = Modifier.align(Alignment.Center)
+                )
+                is DetailUiState.Success -> DocumentContent(state.document, interactionViewModel, onUploaderClick)
+            }
+        }
+    }
+}
+
+@Composable
+private fun DocumentContent(
+    document: Document,
+    interactionViewModel: DocumentInteractionViewModel,
+    onUploaderClick: (String) -> Unit
+) {
+    val stats = interactionViewModel.stats.collectAsState().value
+    val comments = interactionViewModel.comments.collectAsState().value
+    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+
+    Column(modifier = Modifier.fillMaxSize()) {
+        // Người đăng thật (bấm vào để xem trang cá nhân và nhắn tin)
+        UploaderRow(uploaderId = document.uploaderId, onClick = onUploaderClick)
+
+        Text(
+            text = "${document.type.extension} • ${"%.1f".format(document.sizeInMb)} MB • ${document.category.displayName}",
+            fontSize = 12.sp,
+            color = Color.Gray,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+        )
+
+        DocumentActionBar(stats = stats, onToggleLike = interactionViewModel::toggleLike)
+
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            FilterChip(
+                selected = selectedTab == 0,
+                onClick = { selectedTab = 0 },
+                label = { Text("Nội dung") }
+            )
+            FilterChip(
+                selected = selectedTab == 1,
+                onClick = { selectedTab = 1 },
+                label = { Text("Nhận xét (${comments.size})") }
+            )
+        }
+
+        val contentModifier = Modifier
+            .weight(1f)
+            .fillMaxWidth()
+
+        if (selectedTab == 1) {
+            ReviewsTab(
+                stats = stats,
+                comments = comments,
+                onRate = interactionViewModel::rate,
+                onSend = interactionViewModel::addComment,
+                modifier = contentModifier
+            )
+        } else {
+            when (document.type) {
+                DocumentType.PDF -> {
+                    if (document.filePath != null) {
+                        // Tài liệu người dùng tự thêm: mở đúng tệp đã chọn
+                        PdfViewer(file = File(document.filePath), modifier = contentModifier, documentId = document.id)
+                    } else if (document.fileUrl != null) {
+                        // Tài liệu trên Firebase: tải về máy (chỉ tải một lần) rồi xem
+                        RemotePdfViewer(document = document, modifier = contentModifier)
+                    } else {
+                        SamplePdfViewer(documentId = document.id, modifier = contentModifier)
+                    }
+                }
+
+                // Word / PowerPoint: xem phần chữ trong app, đầy đủ thì mở bằng ứng dụng khác
+                else -> OfficeDocumentViewer(document = document, modifier = contentModifier)
+            }
+        }
+    }
+}
+
+/**
+ * TẠM THỜI: chép assets/sample.pdf ra cache rồi hiển thị.
+ * TODO (phối hợp Bạn B): thay bằng tệp tải từ Firebase Storage về cacheDir -> truyền File đó vào PdfViewer.
+ */
+@Composable
+private fun SamplePdfViewer(documentId: String, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    var file by remember { mutableStateOf<File?>(null) }
+    var failed by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        runCatching {
+            withContext(Dispatchers.IO) {
+                // 1) tệp đã có sẵn trên máy này (do chính mình đăng tải lên)
+                val local = File(File(context.filesDir, "documents"), "$documentId.pdf")
+                if (local.exists() && local.length() > 0) return@withContext local
+                // 2) tệp mẫu chỉ dùng khi chạy dữ liệu giả, tài liệu thật chưa có tệp thì báo rõ
+                if (!AppConfig.USE_FAKE_DOCUMENTS) throw IllegalStateException("Tài liệu chưa có tệp")
+                val out = File(context.cacheDir, "sample.pdf")
+                context.assets.open("sample.pdf").use { input ->
+                    out.outputStream().use { output -> input.copyTo(output) }
+                }
+                out
+            }
+        }.onSuccess { file = it }
+            .onFailure { failed = true }
+    }
+
+    val current = file
+    when {
+        current != null -> PdfViewer(file = current, modifier = modifier, documentId = documentId)
+        failed -> Box(modifier = modifier, contentAlignment = Alignment.Center) {
+            Text(text = "Tài liệu này chưa có tệp đính kèm.", color = Color.Gray)
+        }
+        else -> Box(modifier = modifier, contentAlignment = Alignment.Center) {
+            CircularProgressIndicator()
+        }
+    }
+}
