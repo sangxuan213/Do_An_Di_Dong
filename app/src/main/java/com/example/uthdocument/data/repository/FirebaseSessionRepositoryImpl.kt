@@ -27,8 +27,24 @@ class FirebaseSessionRepositoryImpl(
 
     override fun isLoggedIn(): Boolean = auth.currentUser != null
 
+    /** users/{uid}.disabled = true nghĩa là bị khóa. Lỗi mạng thì coi như chưa khóa. */
+    override suspend fun isAccountLocked(): Boolean {
+        val uid = auth.currentUser?.uid ?: return false
+        return try {
+            firestore.collection("users").document(uid).get().await().getBoolean("disabled") == true
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            false
+        }
+    }
+
     override suspend fun login(identifier: String, password: String): Result<Unit> = runAuth {
         auth.signInWithEmailAndPassword(toEmail(identifier), password).await()
+        if (isAccountLocked()) {
+            auth.signOut()
+            throw AuthException("Tài khoản của bạn đã bị khóa. Hãy liên hệ quản trị viên.")
+        }
         syncFcmToken()
     }
 

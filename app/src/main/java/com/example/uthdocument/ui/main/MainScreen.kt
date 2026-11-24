@@ -54,9 +54,9 @@ fun MainScreen(
     onNavigateToAdmin: () -> Unit = {},
     onNavigateToMyDocuments: () -> Unit = {},
     onNavigateToMessages: () -> Unit = {},
-    onNavigateToDownloads: () -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
+    AccountLockGuard(onLocked = onLogout)
     RequestNotificationPermission()
 
     // rememberSaveable: quay lại từ màn chi tiết vẫn ở đúng tab cũ
@@ -144,8 +144,7 @@ fun MainScreen(
                     onLogout = onLogout,
                     onNavigateToAdmin = onNavigateToAdmin,
                     onNavigateToMyDocuments = onNavigateToMyDocuments,
-                    onNavigateToMessages = onNavigateToMessages,
-                    onNavigateToDownloads = onNavigateToDownloads
+                    onNavigateToMessages = onNavigateToMessages
                 )
                 BottomNavItem.Empty -> {} // Không làm gì cả, đây là khoảng trống cho FAB
             }

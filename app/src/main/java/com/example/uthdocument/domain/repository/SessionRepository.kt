@@ -25,4 +25,7 @@ interface SessionRepository {
     suspend fun sendPasswordReset(identifier: String): Result<Unit>
 
     suspend fun changePassword(newPassword: String): Result<Unit>
+
+    /** Tài khoản đang đăng nhập có bị quản trị viên khóa không (mặc định: không). */
+    suspend fun isAccountLocked(): Boolean = false
 }
