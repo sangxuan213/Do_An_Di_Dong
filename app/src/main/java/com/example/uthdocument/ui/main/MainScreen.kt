@@ -54,9 +54,12 @@ fun MainScreen(
     onNavigateToAdmin: () -> Unit = {},
     onNavigateToMyDocuments: () -> Unit = {},
     onNavigateToMessages: () -> Unit = {},
+    onNavigateToNotifications: () -> Unit = {},
+    onNavigateToDownloads: () -> Unit = {},
     onLogout: () -> Unit = {}
 ) {
     AccountLockGuard(onLocked = onLogout)
+    ExitConfirmHandler()
     RequestNotificationPermission()
 
     // rememberSaveable: quay lại từ màn chi tiết vẫn ở đúng tab cũ
@@ -137,14 +140,19 @@ fun MainScreen(
                 .padding(innerPadding)
         ) {
             when (items[selectedItem]) {
-                BottomNavItem.Home -> HomeScreen(onDocumentClick = onDocumentClick)
+                BottomNavItem.Home -> HomeScreen(
+                    onDocumentClick = onDocumentClick,
+                    onNavigateToChat = onNavigateToMessages,
+                    onNavigateToNotifications = onNavigateToNotifications
+                )
                 BottomNavItem.Library -> LibraryScreen(onDocumentClick = onDocumentClick)
                 BottomNavItem.Courses -> CoursesScreen(onCourseClick = onCourseClick)
                 BottomNavItem.Profile -> ProfileScreen(
                     onLogout = onLogout,
                     onNavigateToAdmin = onNavigateToAdmin,
                     onNavigateToMyDocuments = onNavigateToMyDocuments,
-                    onNavigateToMessages = onNavigateToMessages
+                    onNavigateToMessages = onNavigateToMessages,
+                    onNavigateToDownloads = onNavigateToDownloads
                 )
                 BottomNavItem.Empty -> {} // Không làm gì cả, đây là khoảng trống cho FAB
             }

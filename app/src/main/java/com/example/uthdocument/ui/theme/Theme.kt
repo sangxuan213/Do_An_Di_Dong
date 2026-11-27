@@ -18,15 +18,17 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
+    primary = UthBlue,
     secondary = PurpleGrey40,
     tertiary = Pink40
 )
 
 @Composable
 fun UTHDocumentTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
+    // Các màn hình đang dùng màu sáng gán cứng (thẻ trắng, chữ xám) nên mặc định chạy giao diện sáng với màu UTH.
+    // Muốn bật lại chế độ tối/màu hệ thống thì đổi hai giá trị này (và sửa các màu gán cứng trước).
+    darkTheme: Boolean = false,
+    dynamicColor: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {

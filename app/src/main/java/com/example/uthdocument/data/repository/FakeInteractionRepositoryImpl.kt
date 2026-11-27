@@ -45,6 +45,9 @@ class FakeInteractionRepositoryImpl : InteractionRepository {
             s.copy(comments = s.comments + comment)
         }
 
+    override suspend fun deleteComment(documentId: String, commentId: String) =
+        update(documentId) { s -> s.copy(comments = s.comments.filterNot { it.id == commentId }) }
+
     private fun update(documentId: String, transform: (DocState) -> DocState) {
         store.update { map -> map + (documentId to transform(map[documentId] ?: DocState())) }
     }

@@ -6,6 +6,7 @@ import com.example.uthdocument.domain.model.ChatMessage
 import com.example.uthdocument.domain.model.Conversation
 import com.example.uthdocument.domain.repository.ChatRepository
 import com.example.uthdocument.domain.repository.ProfileRepository
+import com.example.uthdocument.fcm.PushNotifier
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
@@ -149,6 +150,8 @@ class FirebaseChatRepositoryImpl(
             Log.e(TAG, "Gửi tin nhắn thất bại", e)
             throw IllegalStateException("Không gửi được tin nhắn. Hãy kiểm tra mạng và Firestore rules.", e)
         }
+        // Nhờ Worker đẩy thông báo tới người nhận (chạy ngầm, lỗi không ảnh hưởng việc gửi tin)
+        PushNotifier.notifyChat(chatId)
     }
 
     override suspend fun markRead(chatId: String) {

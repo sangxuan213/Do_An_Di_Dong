@@ -20,4 +20,7 @@ interface InteractionRepository {
     suspend fun setRating(documentId: String, stars: Int)
 
     suspend fun addComment(documentId: String, author: String, content: String)
+
+    // Xóa một bình luận (chỉ người viết hoặc admin; Firestore rules kiểm tra)
+    suspend fun deleteComment(documentId: String, commentId: String)
 }
