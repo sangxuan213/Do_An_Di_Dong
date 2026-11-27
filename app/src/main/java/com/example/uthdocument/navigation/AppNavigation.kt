@@ -1,6 +1,7 @@
 package com.example.uthdocument.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -13,9 +14,10 @@ import com.example.uthdocument.ui.add.AddDocumentScreen
 import com.example.uthdocument.ui.admin.AdminScreen
 import com.example.uthdocument.ui.chat.ChatScreen
 import com.example.uthdocument.ui.chat.ConversationsScreen
-import com.example.uthdocument.ui.downloads.DownloadsScreen
 import com.example.uthdocument.ui.courses.CourseDetailScreen
 import com.example.uthdocument.ui.detail.DocumentDetailScreen
+import com.example.uthdocument.ui.downloads.DownloadsScreen
+import com.example.uthdocument.ui.notifications.NotificationsScreen
 import com.example.uthdocument.ui.login.LoginScreen
 import com.example.uthdocument.ui.login.RegisterScreen
 import com.example.uthdocument.ui.main.MainScreen
@@ -33,8 +35,9 @@ object Routes {
     const val USER = "user/{uid}"
     const val MY_DOCUMENTS = "my_documents"
     const val CHATS = "chats"
-    const val DOWNLOADS = "downloads"
     const val CHAT = "chat/{chatId}"
+    const val NOTIFICATIONS = "notifications"
+    const val DOWNLOADS = "downloads"
 
     fun document(id: String) = "document/$id"
     fun course(id: String) = "course/$id"
@@ -43,10 +46,24 @@ object Routes {
 }
 
 @Composable
-fun AppNavigation(navController: NavHostController = rememberNavController()) {
+fun AppNavigation(
+    pendingRoute: String? = null,
+    onPendingRouteHandled: () -> Unit = {},
+    navController: NavHostController = rememberNavController()
+) {
     // Đã đăng nhập từ lần trước thì vào thẳng màn hình chính
     val startDestination = remember {
         if (AppContainer.sessionRepository.isLoggedIn()) Routes.MAIN else Routes.LOGIN
+    }
+
+    // Bấm vào thông báo (bài mới của người theo dõi, tin nhắn) thì mở thẳng màn đó (chỉ khi đã đăng nhập)
+    LaunchedEffect(pendingRoute) {
+        if (pendingRoute != null) {
+            if (AppContainer.sessionRepository.isLoggedIn()) {
+                navController.navigate(pendingRoute)
+            }
+            onPendingRouteHandled()
+        }
     }
 
     NavHost(navController = navController, startDestination = startDestination) {
@@ -85,6 +102,7 @@ fun AppNavigation(navController: NavHostController = rememberNavController()) {
                 onNavigateToAdmin = { navController.navigate(Routes.ADMIN) },
                 onNavigateToMyDocuments = { navController.navigate(Routes.MY_DOCUMENTS) },
                 onNavigateToMessages = { navController.navigate(Routes.CHATS) },
+                onNavigateToNotifications = { navController.navigate(Routes.NOTIFICATIONS) },
                 onNavigateToDownloads = { navController.navigate(Routes.DOWNLOADS) },
                 onLogout = {
                     navController.navigate(Routes.LOGIN) {
@@ -98,7 +116,8 @@ fun AppNavigation(navController: NavHostController = rememberNavController()) {
         composable(Routes.ADMIN) {
             AdminScreen(
                 onBack = { navController.popBackStack() },
-                onNavigateToAddDocument = { navController.navigate(Routes.ADD_DOCUMENT) }
+                onNavigateToAddDocument = { navController.navigate(Routes.ADD_DOCUMENT) },
+                onDocumentClick = { id -> navController.navigate(Routes.document(id)) }
             )
         }
 
@@ -125,6 +144,15 @@ fun AppNavigation(navController: NavHostController = rememberNavController()) {
                 onBack = { navController.popBackStack() },
                 onDocumentClick = { id -> navController.navigate(Routes.document(id)) },
                 onAddDocument = { navController.navigate(Routes.ADD_DOCUMENT) }
+            )
+        }
+
+        // Thông báo (chuông ở trang chủ)
+        composable(Routes.NOTIFICATIONS) {
+            NotificationsScreen(
+                onBack = { navController.popBackStack() },
+                onDocumentClick = { id -> navController.navigate(Routes.document(id)) },
+                onChatClick = { chatId -> navController.navigate(Routes.chat(chatId)) }
             )
         }
 

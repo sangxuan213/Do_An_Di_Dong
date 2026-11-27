@@ -178,7 +178,9 @@ private fun DocumentContent(
                 comments = comments,
                 onRate = interactionViewModel::rate,
                 onSend = interactionViewModel::addComment,
-                modifier = contentModifier
+                modifier = contentModifier,
+                currentUserId = interactionViewModel.myId,
+                onDeleteComment = interactionViewModel::deleteComment
             )
         } else {
             when (document.type) {

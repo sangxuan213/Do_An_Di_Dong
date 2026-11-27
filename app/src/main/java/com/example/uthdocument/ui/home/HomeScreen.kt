@@ -32,6 +32,8 @@ import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.PlayCircleFilled
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Slideshow
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -64,7 +66,9 @@ import com.example.uthdocument.domain.model.Category
 import com.example.uthdocument.domain.model.Document
 import com.example.uthdocument.domain.model.DocumentType
 import com.example.uthdocument.ui.bookmark.BookmarkViewModel
+import com.example.uthdocument.ui.chat.UnreadMessagesViewModel
 import com.example.uthdocument.ui.components.DocumentItem
+import com.example.uthdocument.ui.notifications.NotificationsViewModel
 
 private val UthNavy = Color(0xFF002D58)
 private val UthTeal = Color(0xFF007B7A)
@@ -75,12 +79,17 @@ private val UthBackground = Color(0xFFF8FAFC)
 fun HomeScreen(
     onDocumentClick: (String) -> Unit = {},
     onNavigateToChat: () -> Unit = {},
+    onNavigateToNotifications: () -> Unit = {},
     viewModel: HomeViewModel = viewModel(),
-    bookmarkViewModel: BookmarkViewModel = viewModel()
+    bookmarkViewModel: BookmarkViewModel = viewModel(),
+    notificationsViewModel: NotificationsViewModel = viewModel(),
+    unreadViewModel: UnreadMessagesViewModel = viewModel()
 ) {
     val recent = viewModel.recentDocuments.collectAsState().value
     val latest = viewModel.latestDocuments.collectAsState().value
     val bookmarkedIds = bookmarkViewModel.bookmarkedIds.collectAsState().value
+    val unseenNotifications = notificationsViewModel.unseenCount.collectAsState().value
+    val unreadMessages = unreadViewModel.unreadCount.collectAsState().value
 
     var selectedCategoryFilter by remember { mutableStateOf<Category?>(null) }
     var searchQuery by remember { mutableStateOf("") }
@@ -128,7 +137,10 @@ fun HomeScreen(
             HomeHeaderBanner(
                 searchQuery = searchQuery,
                 onSearchQueryChange = { searchQuery = it },
-                onNavigateToChat = onNavigateToChat
+                onNavigateToChat = onNavigateToChat,
+                onNavigateToNotifications = onNavigateToNotifications,
+                unreadMessages = unreadMessages,
+                unseenNotifications = unseenNotifications
             )
         }
 
@@ -318,7 +330,10 @@ fun HomeScreen(
 private fun HomeHeaderBanner(
     searchQuery: String = "",
     onSearchQueryChange: (String) -> Unit = {},
-    onNavigateToChat: () -> Unit = {}
+    onNavigateToChat: () -> Unit = {},
+    onNavigateToNotifications: () -> Unit = {},
+    unreadMessages: Int = 0,
+    unseenNotifications: Int = 0
 ) {
     Box(
         modifier = Modifier
@@ -351,32 +366,44 @@ private fun HomeHeaderBanner(
                     )
                 }
 
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Surface(
-                        shape = CircleShape,
-                        color = Color.White.copy(alpha = 0.2f),
-                        modifier = Modifier.size(40.dp)
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    BadgedBox(
+                        badge = {
+                            if (unreadMessages > 0) Badge { Text(if (unreadMessages > 9) "9+" else "$unreadMessages") }
+                        }
                     ) {
-                        IconButton(onClick = onNavigateToChat) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Chat,
-                                contentDescription = "Trò chuyện",
-                                tint = Color.White
-                            )
+                        Surface(
+                            shape = CircleShape,
+                            color = Color.White.copy(alpha = 0.2f),
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            IconButton(onClick = onNavigateToChat) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.Chat,
+                                    contentDescription = "Tin nhắn",
+                                    tint = Color.White
+                                )
+                            }
                         }
                     }
 
-                    Surface(
-                        shape = CircleShape,
-                        color = Color.White.copy(alpha = 0.2f),
-                        modifier = Modifier.size(40.dp)
+                    BadgedBox(
+                        badge = {
+                            if (unseenNotifications > 0) Badge { Text(if (unseenNotifications > 9) "9+" else "$unseenNotifications") }
+                        }
                     ) {
-                        IconButton(onClick = { }) {
-                            Icon(
-                                imageVector = Icons.Default.Notifications,
-                                contentDescription = "Thông báo",
-                                tint = Color.White
-                            )
+                        Surface(
+                            shape = CircleShape,
+                            color = Color.White.copy(alpha = 0.2f),
+                            modifier = Modifier.size(40.dp)
+                        ) {
+                            IconButton(onClick = onNavigateToNotifications) {
+                                Icon(
+                                    imageVector = Icons.Default.Notifications,
+                                    contentDescription = "Thông báo",
+                                    tint = Color.White
+                                )
+                            }
                         }
                     }
                 }

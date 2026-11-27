@@ -18,21 +18,26 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material.icons.filled.StarHalf
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -101,7 +106,9 @@ internal fun ReviewsTab(
     comments: List<Comment>,
     onRate: (Int) -> Unit,
     onSend: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    currentUserId: String? = null,
+    onDeleteComment: (String) -> Unit = {}
 ) {
     var draft by rememberSaveable { mutableStateOf("") }
 
@@ -167,7 +174,13 @@ internal fun ReviewsTab(
                 Text(text = "Chưa có nhận xét nào. Hãy là người đầu tiên!", color = Color.Gray)
             }
         } else {
-            items(comments, key = { it.id }) { comment -> CommentItem(comment) }
+            items(comments, key = { it.id }) { comment ->
+                CommentItem(
+                    comment = comment,
+                    canDelete = currentUserId != null && comment.authorId == currentUserId,
+                    onDelete = { onDeleteComment(comment.id) }
+                )
+            }
         }
     }
 }
@@ -205,7 +218,8 @@ private fun RatingInput(myRating: Int, onRate: (Int) -> Unit) {
 }
 
 @Composable
-private fun CommentItem(comment: Comment) {
+private fun CommentItem(comment: Comment, canDelete: Boolean = false, onDelete: () -> Unit = {}) {
+    var confirmDelete by remember { mutableStateOf(false) }
     val initial = comment.author.trim().split(" ").lastOrNull()?.firstOrNull()?.uppercase() ?: "?"
 
     Row(verticalAlignment = Alignment.Top) {
@@ -227,5 +241,25 @@ private fun CommentItem(comment: Comment) {
             }
             Text(text = comment.content)
         }
+        if (canDelete) {
+            IconButton(onClick = { confirmDelete = true }) {
+                Icon(Icons.Default.Delete, contentDescription = "Xóa nhận xét", tint = Color.Gray)
+            }
+        }
+    }
+
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text("Xóa nhận xét") },
+            text = { Text("Bạn muốn xóa nhận xét này?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmDelete = false
+                    onDelete()
+                }) { Text("Xóa", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Hủy") } }
+        )
     }
 }

@@ -20,6 +20,13 @@ object AppConfig {
      */
     const val USE_FIREBASE_STORAGE = false
 
+    /**
+     * Địa chỉ Cloudflare Worker đẩy thông báo tin nhắn (xem cloudflare-worker/README.md), ví dụ
+     * "https://uth-chat-push.ten-ban.workers.dev". Để trống = không đẩy; app vẫn báo tin nhắn
+     * bằng cách cũ (tức thì khi app còn chạy nền, trễ tối đa ~15 phút khi app bị tắt hẳn).
+     */
+    const val PUSH_WORKER_URL = "https://uth-chat-push.tuilasang2006.workers.dev"
+
     /** Nếu người dùng nhập mã số (không có @) thì ghép thêm đuôi này để thành email đăng nhập. */
     const val EMAIL_DOMAIN = "ut.edu.vn"
 }

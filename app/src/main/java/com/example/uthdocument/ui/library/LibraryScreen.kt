@@ -19,6 +19,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -148,11 +149,24 @@ fun LibraryScreen(
             if (shown == null) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
             } else if (shown.isEmpty()) {
-                Text(
-                    text = if (onlyBookmarked) "Bạn chưa lưu tài liệu nào." else "Không tìm thấy tài liệu phù hợp.",
-                    color = Color.Gray,
-                    modifier = Modifier.align(Alignment.Center)
-                )
+                val filtering = query.isNotBlank() || selected != null || types.isNotEmpty() || onlyBookmarked
+                Column(
+                    modifier = Modifier.align(Alignment.Center).padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = when {
+                            onlyBookmarked && query.isBlank() && selected == null && types.isEmpty() -> "Bạn chưa lưu tài liệu nào."
+                            filtering -> "Không tìm thấy tài liệu phù hợp."
+                            else -> "Chưa có tài liệu nào. Bấm nút + để đăng tài liệu đầu tiên."
+                        },
+                        color = Color.Gray
+                    )
+                    if (filtering) {
+                        TextButton(onClick = viewModel::clearFilters) { Text("Xóa bộ lọc") }
+                    }
+                }
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
