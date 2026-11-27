@@ -28,6 +28,19 @@ class MyFirebaseMessagingService : FirebaseMessagingService() {
     override fun onMessageReceived(message: RemoteMessage) {
         super.onMessageReceived(message)
 
+        // Tin nhắn mới (do Cloudflare Worker gửi, xem cloudflare-worker/README.md)
+        if (message.data["type"] == "chat") {
+            ChatNotifier.showFromPush(
+                context = applicationContext,
+                chatId = message.data["chatId"],
+                recipientId = message.data["recipientId"],
+                sender = message.data["title"],
+                text = message.data["body"],
+                updatedAt = message.data["updatedAt"]?.toLongOrNull()
+            )
+            return
+        }
+
         val title = message.notification?.title ?: "Thông báo mới từ UTH Document"
         val body = message.notification?.body ?: "Bạn có tài liệu hoặc công văn mới cần xử lý."
 

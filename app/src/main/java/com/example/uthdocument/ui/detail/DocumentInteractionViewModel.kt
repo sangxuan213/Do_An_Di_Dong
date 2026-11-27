@@ -2,8 +2,7 @@ package com.example.uthdocument.ui.detail
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.uthdocument.data.repository.FakeInteractionRepositoryImpl
-import com.example.uthdocument.data.repository.FakeProfileRepositoryImpl
+import com.example.uthdocument.data.AppContainer
 import com.example.uthdocument.domain.model.Comment
 import com.example.uthdocument.domain.model.DocumentStats
 import com.example.uthdocument.domain.repository.InteractionRepository
@@ -20,9 +19,12 @@ import kotlinx.coroutines.launch
 
 /** Thích, đánh giá sao và bình luận của một tài liệu. Gọi load(id) khi mở màn hình. */
 class DocumentInteractionViewModel(
-    private val repository: InteractionRepository = FakeInteractionRepositoryImpl(),
-    private val profileRepository: ProfileRepository = FakeProfileRepositoryImpl()
+    private val repository: InteractionRepository = AppContainer.interactionRepository,
+    private val profileRepository: ProfileRepository = AppContainer.profileRepository
 ) : ViewModel() {
+
+    /** Id người đang đăng nhập, để biết bình luận nào là của mình (cho phép xóa). */
+    val myId: String? = AppContainer.userRepository.currentUserId()
 
     private val documentId = MutableStateFlow<String?>(null)
 
@@ -54,6 +56,11 @@ class DocumentInteractionViewModel(
         val id = documentId.value ?: return
         val newValue = if (stars == stats.value.myRating) 0 else stars
         viewModelScope.launch { repository.setRating(id, newValue) }
+    }
+
+    fun deleteComment(commentId: String) {
+        val id = documentId.value ?: return
+        viewModelScope.launch { runCatching { repository.deleteComment(id, commentId) } }
     }
 
     fun addComment(content: String) {

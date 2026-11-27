@@ -22,9 +22,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -63,6 +66,8 @@ fun UserProfileScreen(
     val loaded = viewModel.loaded.collectAsState().value
     val documents = viewModel.documents.collectAsState().value
     val error = viewModel.error.collectAsState().value
+    val isFollowing = viewModel.isFollowing.collectAsState().value
+    val followerCount = viewModel.followerCount.collectAsState().value
 
     Scaffold(
         topBar = {
@@ -121,15 +126,32 @@ fun UserProfileScreen(
                             Spacer(Modifier.height(4.dp))
                             Text(detail, color = Color.Gray, fontSize = 13.sp)
                         }
+                        Spacer(Modifier.height(4.dp))
+                        Text("$followerCount người theo dõi", color = Color.Gray, fontSize = 13.sp)
                         if (!viewModel.isMe) {
                             Spacer(Modifier.height(14.dp))
-                            Button(
-                                onClick = { viewModel.startChat(onOpenChat) },
-                                colors = ButtonDefaults.buttonColors(containerColor = UthBlue)
-                            ) {
-                                Icon(Icons.Default.Email, contentDescription = null)
-                                Spacer(Modifier.width(8.dp))
-                                Text("Nhắn tin")
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                if (isFollowing) {
+                                    OutlinedButton(onClick = viewModel::toggleFollow) {
+                                        Icon(Icons.Default.Check, contentDescription = null)
+                                        Spacer(Modifier.width(8.dp))
+                                        Text("Đang theo dõi")
+                                    }
+                                } else {
+                                    Button(
+                                        onClick = viewModel::toggleFollow,
+                                        colors = ButtonDefaults.buttonColors(containerColor = UthBlue)
+                                    ) {
+                                        Icon(Icons.Default.PersonAdd, contentDescription = null)
+                                        Spacer(Modifier.width(8.dp))
+                                        Text("Theo dõi")
+                                    }
+                                }
+                                OutlinedButton(onClick = { viewModel.startChat(onOpenChat) }) {
+                                    Icon(Icons.Default.Email, contentDescription = null)
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Nhắn tin")
+                                }
                             }
                         }
                         if (error != null) {

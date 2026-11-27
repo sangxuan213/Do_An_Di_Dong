@@ -6,7 +6,8 @@ data class Comment(
     val documentId: String,
     val author: String,
     val content: String,
-    val timestamp: Long // mili-giây
+    val timestamp: Long, // mili-giây
+    val authorId: String = "" // uid người viết; rỗng = không rõ (dữ liệu giả)
 )
 
 /** Số liệu tương tác của một tài liệu, đã tính sẵn cho người dùng hiện tại. */

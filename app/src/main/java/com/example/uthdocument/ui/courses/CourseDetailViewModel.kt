@@ -2,7 +2,6 @@ package com.example.uthdocument.ui.courses
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.uthdocument.data.repository.FakeCourseRepositoryImpl
 import com.example.uthdocument.data.AppContainer
 import com.example.uthdocument.domain.model.Course
 import com.example.uthdocument.domain.model.Document
@@ -24,7 +23,7 @@ sealed interface CourseDetailUiState {
 }
 
 class CourseDetailViewModel(
-    private val courseRepository: CourseRepository = FakeCourseRepositoryImpl(),
+    private val courseRepository: CourseRepository = AppContainer.courseRepository,
     private val documentRepository: DocumentRepository = AppContainer.documentRepository
 ) : ViewModel() {
 

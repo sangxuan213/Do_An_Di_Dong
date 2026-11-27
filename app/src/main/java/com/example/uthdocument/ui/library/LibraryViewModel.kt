@@ -3,7 +3,6 @@ package com.example.uthdocument.ui.library
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.uthdocument.data.AppContainer
-import com.example.uthdocument.data.repository.FakeInteractionRepositoryImpl
 import com.example.uthdocument.domain.model.Category
 import com.example.uthdocument.domain.model.Document
 import com.example.uthdocument.domain.model.DocumentSort
@@ -24,7 +23,7 @@ import kotlinx.coroutines.flow.update
 
 class LibraryViewModel(
     private val repository: DocumentRepository = AppContainer.documentRepository,
-    interactionRepository: InteractionRepository = FakeInteractionRepositoryImpl()
+    interactionRepository: InteractionRepository = AppContainer.interactionRepository
 ) : ViewModel() {
 
     private val _query = MutableStateFlow("")
@@ -61,7 +60,8 @@ class LibraryViewModel(
         val key = q.trim().normalizedForSearch()
         docs
             .filter { doc ->
-                (key.isEmpty() || doc.title.normalizedForSearch().contains(key)) &&
+                (key.isEmpty() || doc.title.normalizedForSearch().contains(key) ||
+                    doc.courseId?.normalizedForSearch()?.contains(key) == true) &&
                     (types.isEmpty() || doc.type in types)
             }
             .sortedWith(comparatorFor(sort, statsMap))
@@ -73,6 +73,14 @@ class LibraryViewModel(
 
     fun onCategorySelected(category: Category?) {
         _selectedCategory.value = category
+    }
+
+    /** Bỏ mọi bộ lọc (từ khóa, danh mục, loại tệp, đã lưu); giữ cách sắp xếp. */
+    fun clearFilters() {
+        _query.value = ""
+        _selectedCategory.value = null
+        _types.value = emptySet()
+        _onlyBookmarked.value = false
     }
 
     fun toggleOnlyBookmarked() {

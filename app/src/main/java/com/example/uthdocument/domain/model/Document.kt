@@ -31,5 +31,6 @@ enum class Category(val displayName: String) {
     ECONOMICS("Kinh tế"),
     LOGISTICS("Logistics"),
     LAW("Pháp luật"),
+    MAJOR("Chuyên ngành"),
     OTHER("Khác") // tài liệu có danh mục chưa khớp loại nào ở trên
 }
